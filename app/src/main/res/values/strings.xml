@@ -23,4 +23,6 @@
     <string name="lab_sway" translatable="false">Sway</string>
     <string name="lab_hud" translatable="false">Frame stats (HUD)</string>
     <string name="lab_tracer" translatable="false">Mark one flake (tracer)</string>
+    <string name="lab_foreground" translatable="false">Bokeh flakes in front</string>
+    <string name="lab_instant" translatable="false">Apply changes at once (no front)</string>
 </resources>

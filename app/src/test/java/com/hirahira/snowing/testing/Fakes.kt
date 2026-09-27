@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 class FakeSettingsRepository : SnowSettingsRepository {
     val state = MutableStateFlow(SnowSettings())
     override val settings = state
+    var writes = 0
+        private set
 
     override suspend fun update(transform: (SnowSettings) -> SnowSettings) {
+        writes++
         state.value = transform(state.value)
     }
 }

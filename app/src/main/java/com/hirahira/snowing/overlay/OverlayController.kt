@@ -3,6 +3,7 @@ package com.hirahira.snowing.overlay
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import android.util.Log
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ interface OverlayController {
 
     fun start()
 
+    /** Snow stops falling; the service ends by itself once the last flakes are out (ADR-0006 §5). */
     fun stop()
 }
 
@@ -34,7 +36,18 @@ class ServiceOverlayController(context: Context) : OverlayController {
     }
 
     override fun stop() {
-        appContext.stopService(serviceIntent)
+        if (!OverlayRuntime.running.value) return
+        try {
+            // Allowed from the background: the app is running a foreground service.
+            appContext.startService(Intent(serviceIntent).setAction(SnowOverlayService.ACTION_STOP))
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Graceful stop refused, stopping at once", e)
+            appContext.stopService(serviceIntent)
+        }
+    }
+
+    private companion object {
+        const val TAG = "OverlayController"
     }
 }
 

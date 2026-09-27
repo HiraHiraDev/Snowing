@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
  * variant and switches it on or off without touching the UI.
  *
  *     adb shell am start -n com.hirahira.snowing/.debug.PerfControlActivity \
- *         --ez snow true --ef intensity 1.0 --ef speed 1.0 --ei layers 5
+ *         --ez snow true --ef intensity 1.0 --ef speed 1.0 --ei layers 5 --ez bokeh true
  *
  * Every extra is optional; only the ones given change. Guarded by the DUMP
  * permission, which adb shell holds and regular apps cannot get.
@@ -31,6 +31,7 @@ class PerfControlActivity : ComponentActivity() {
                         layers = extras.intOr(EXTRA_LAYERS, current.lab.layers),
                         sway = extras.floatOr(EXTRA_SWAY, current.lab.sway),
                         showHud = extras.booleanOr(EXTRA_HUD, current.lab.showHud),
+                        foreground = extras.booleanOr(EXTRA_BOKEH, current.lab.foreground),
                     ),
                 )
             }
@@ -55,5 +56,6 @@ class PerfControlActivity : ComponentActivity() {
         const val EXTRA_LAYERS = "layers"
         const val EXTRA_SWAY = "sway"
         const val EXTRA_HUD = "hud"
+        const val EXTRA_BOKEH = "bokeh"
     }
 }

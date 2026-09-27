@@ -27,6 +27,11 @@ data class SnowConfig(
     val wind: Float,
     /** Flake alpha, 0..1. */
     val opacity: Float,
+    /**
+     * Extra gap above the screen before a flake is reborn, in screen heights.
+     * 0 keeps a steady snowfall; larger values make flakes pass only now and then.
+     */
+    val respawnSpread: Float = 0f,
 ) {
     init {
         require(density >= 0f) { "density must be >= 0, was $density" }
@@ -35,5 +40,6 @@ data class SnowConfig(
         require(layers >= 1) { "layers must be >= 1, was $layers" }
         require(swayAmplitude >= 0f && swayFrequency >= 0f) { "sway must be >= 0" }
         require(opacity in 0f..1f) { "opacity must be in 0..1, was $opacity" }
+        require(respawnSpread >= 0f) { "respawnSpread must be >= 0, was $respawnSpread" }
     }
 }

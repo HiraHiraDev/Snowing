@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.view.Choreographer
 import android.view.View
 import com.hirahira.snowing.engine.SnowField
@@ -18,12 +19,16 @@ data class RenderOptions(
 )
 
 /**
- * Draws a [SnowField] and drives it from vsync. dt comes from Choreographer
- * frame timestamps, so the simulation runs on real time at any refresh rate.
+ * Draws the snow and the foreground bokeh flakes and drives both from vsync.
+ * dt comes from Choreographer frame timestamps, so the simulation runs on real
+ * time at any refresh rate.
  */
 @SuppressLint("ViewConstructor")
-internal class SnowView(context: Context, private val snow: SnowField) :
-    View(context), Choreographer.FrameCallback {
+internal class SnowView(
+    context: Context,
+    private val snow: SnowField,
+    private val foreground: SnowField,
+) : View(context), Choreographer.FrameCallback {
 
     var renderOptions: RenderOptions = RenderOptions()
         set(value) {
@@ -37,6 +42,10 @@ internal class SnowView(context: Context, private val snow: SnowField) :
             updateLoop()
         }
 
+    /** Called once when both fields have stopped falling and are empty. */
+    var onDrained: (() -> Unit)? = null
+    private var drainedReported = false
+
     private val choreographer = Choreographer.getInstance()
     private val density = resources.displayMetrics.density
     private val stats = FrameStats()
@@ -44,7 +53,10 @@ internal class SnowView(context: Context, private val snow: SnowField) :
     private var looping = false
     private var lastFrameNanos = 0L
 
-    private val flakePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+    private val flakeSprites = SnowSprites.flakes()
+    private val bokehSprites = SnowSprites.bokeh()
+    private val spritePaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val spriteBounds = RectF()
     private val tracerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.RED
         style = Paint.Style.STROKE
@@ -70,6 +82,7 @@ internal class SnowView(context: Context, private val snow: SnowField) :
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         snow.resize(w, h)
+        foreground.resize(w, h)
     }
 
     override fun doFrame(frameTimeNanos: Long) {
@@ -77,7 +90,9 @@ internal class SnowView(context: Context, private val snow: SnowField) :
         if (lastFrameNanos != 0L) {
             val dt = (frameTimeNanos - lastFrameNanos) / NANOS_PER_SECOND
             snow.step(dt)
+            foreground.step(dt)
             stats.record(dt)
+            reportDrained()
         }
         lastFrameNanos = frameTimeNanos
         invalidate()
@@ -85,14 +100,36 @@ internal class SnowView(context: Context, private val snow: SnowField) :
     }
 
     override fun onDraw(canvas: Canvas) {
-        for (i in 0 until snow.count) {
-            flakePaint.alpha = (snow.alpha(i) * 255).roundToInt()
-            canvas.drawCircle(snow.x(i), snow.y(i), snow.radius(i), flakePaint)
-        }
+        drawField(canvas, snow, flakeSprites)
+        drawField(canvas, foreground, bokehSprites)
         if (renderOptions.showTracer && snow.count > 0) {
             canvas.drawCircle(snow.x(0), snow.y(0), snow.radius(0) + TRACER_GAP_DP * density, tracerPaint)
         }
         if (renderOptions.showHud) drawHud(canvas)
+    }
+
+    fun resetDrained() {
+        drainedReported = false
+    }
+
+    private fun reportDrained() {
+        if (drainedReported || snow.isFalling || !snow.isEmpty || !foreground.isEmpty) return
+        drainedReported = true
+        onDrained?.invoke()
+    }
+
+    private fun drawField(canvas: Canvas, field: SnowField, sprites: SpriteAtlas) {
+        val bottom = height.toFloat()
+        for (i in 0 until field.count) {
+            val half = field.radius(i) * sprites.extent
+            val y = field.y(i)
+            // Most of the waiting band sits above the screen; skip what cannot be seen.
+            if (y + half < 0f || y - half > bottom) continue
+            val x = field.x(i)
+            spriteBounds.set(x - half, y - half, x + half, y + half)
+            spritePaint.alpha = (field.alpha(i) * 255).roundToInt()
+            canvas.drawBitmap(sprites.bitmap, sprites.cell(field.shape(i)), spriteBounds, spritePaint)
+        }
     }
 
     private fun drawHud(canvas: Canvas) {
@@ -103,8 +140,9 @@ internal class SnowView(context: Context, private val snow: SnowField) :
             String.format(Locale.US, "fps %.0f   dt %.1f ms   worst %.1f ms", stats.fps, stats.averageMs, stats.worstMs),
             String.format(
                 Locale.US,
-                "flakes %d   tracer %.0f px/s",
+                "flakes %d + %d bokeh   tracer %.0f px/s",
                 snow.count,
+                foreground.count,
                 if (snow.count > 0) snow.fallSpeed(0) else 0f,
             ),
         )

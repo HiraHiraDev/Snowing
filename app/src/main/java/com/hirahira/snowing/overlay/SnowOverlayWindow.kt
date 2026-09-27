@@ -8,7 +8,6 @@ import android.os.Build
 import android.view.Display
 import android.view.WindowManager
 import android.view.WindowManager.LayoutParams
-import com.hirahira.snowing.engine.SnowConfig
 import com.hirahira.snowing.engine.SnowField
 
 /**
@@ -16,12 +15,14 @@ import com.hirahira.snowing.engine.SnowField
  * Window flags and alpha are what keep touches passing through —
  * see docs/adr/0001-overlay-window.md before changing them.
  */
-internal class SnowOverlayWindow(context: Context, initialConfig: SnowConfig) {
+internal class SnowOverlayWindow(context: Context, initial: SnowScene) {
 
     private val windowContext: Context = overlayWindowContext(context)
     private val windowManager = windowContext.getSystemService(WindowManager::class.java)
-    private val snow = SnowField(initialConfig, pxPerDp = windowContext.resources.displayMetrics.density)
-    private val view = SnowView(windowContext, snow)
+    private val pxPerDp = windowContext.resources.displayMetrics.density
+    private val snow = SnowField(initial.snow, pxPerDp)
+    private val foreground = SnowField(initial.foreground, pxPerDp)
+    private val view = SnowView(windowContext, snow, foreground)
     private var attached = false
 
     fun attach() {
@@ -36,13 +37,38 @@ internal class SnowOverlayWindow(context: Context, initialConfig: SnowConfig) {
         attached = false
     }
 
-    fun apply(config: SnowConfig, options: RenderOptions) {
-        snow.updateConfig(config)
+    /** New flakes take [scene]; [immediate] also re-derives falling ones (debug tuning only). */
+    fun apply(scene: SnowScene, options: RenderOptions, immediate: Boolean) {
+        snow.updateConfig(scene.snow, immediate)
+        foreground.updateConfig(scene.foreground, immediate)
         view.renderOptions = options
     }
 
     fun setPaused(paused: Boolean) {
         view.isPaused = paused
+    }
+
+    /** Called once when the snow has stopped falling and every flake is gone. */
+    var onDrained: (() -> Unit)?
+        get() = view.onDrained
+        set(value) {
+            view.onDrained = value
+        }
+
+    fun stopFalling() {
+        snow.stopFalling()
+        foreground.stopFalling()
+    }
+
+    fun fadeOut() {
+        snow.fadeOut()
+        foreground.fadeOut()
+    }
+
+    fun resumeFalling() {
+        snow.resumeFalling()
+        foreground.resumeFalling()
+        view.resetDrained()
     }
 
     private fun layoutParams() = LayoutParams(

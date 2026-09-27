@@ -17,6 +17,8 @@ data class LabUiState(
     val sway: Float,
     val showHud: Boolean,
     val showTracer: Boolean,
+    val foreground: Boolean,
+    val instantChanges: Boolean,
 )
 
 sealed interface ControlEvent {
@@ -27,6 +29,10 @@ sealed interface ControlEvent {
     data class SpeedChanged(val value: Float) : ControlEvent
     data class LayersChanged(val value: Int) : ControlEvent
     data class SwayChanged(val value: Float) : ControlEvent
+    /** The finger left a slider: write the final value now. */
+    data object SliderReleased : ControlEvent
     data class HudToggled(val enabled: Boolean) : ControlEvent
     data class TracerToggled(val enabled: Boolean) : ControlEvent
+    data class ForegroundToggled(val enabled: Boolean) : ControlEvent
+    data class InstantChangesToggled(val enabled: Boolean) : ControlEvent
 }

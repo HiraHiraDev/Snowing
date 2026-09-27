@@ -76,12 +76,14 @@ private fun SnowfallCard(state: ControlUiState, onEvent: (ControlEvent) -> Unit)
             value = state.intensity,
             valueText = state.intensity.asPercent(),
             onValueChange = { onEvent(ControlEvent.IntensityChanged(it)) },
+            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
         )
         SettingSlider(
             label = stringResource(R.string.control_speed),
             value = state.speed,
             valueText = state.speed.asPercent(),
             onValueChange = { onEvent(ControlEvent.SpeedChanged(it)) },
+            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
         )
     }
 }
@@ -102,12 +104,14 @@ private fun LabCard(lab: LabUiState, onEvent: (ControlEvent) -> Unit) {
             valueRange = LAB_LAYERS_MIN.toFloat()..LAB_LAYERS_MAX.toFloat(),
             steps = LAB_LAYERS_MAX - LAB_LAYERS_MIN - 1,
             onValueChange = { onEvent(ControlEvent.LayersChanged(it.roundToInt())) },
+            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
         )
         SettingSlider(
             label = stringResource(R.string.lab_sway),
             value = lab.sway,
             valueText = lab.sway.asPercent(),
             onValueChange = { onEvent(ControlEvent.SwayChanged(it)) },
+            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
         )
         SettingSwitch(
             label = stringResource(R.string.lab_hud),
@@ -118,6 +122,16 @@ private fun LabCard(lab: LabUiState, onEvent: (ControlEvent) -> Unit) {
             label = stringResource(R.string.lab_tracer),
             checked = lab.showTracer,
             onCheckedChange = { onEvent(ControlEvent.TracerToggled(it)) },
+        )
+        SettingSwitch(
+            label = stringResource(R.string.lab_foreground),
+            checked = lab.foreground,
+            onCheckedChange = { onEvent(ControlEvent.ForegroundToggled(it)) },
+        )
+        SettingSwitch(
+            label = stringResource(R.string.lab_instant),
+            checked = lab.instantChanges,
+            onCheckedChange = { onEvent(ControlEvent.InstantChangesToggled(it)) },
         )
     }
 }
@@ -137,7 +151,14 @@ private fun ControlScreenPreview() {
                 hasOverlayPermission = true,
                 intensity = 0.45f,
                 speed = 0.4f,
-                lab = LabUiState(layers = 3, sway = 0.5f, showHud = true, showTracer = false),
+                lab = LabUiState(
+                    layers = 3,
+                    sway = 0.5f,
+                    showHud = true,
+                    showTracer = false,
+                    foreground = true,
+                    instantChanges = false,
+                ),
             ),
             onEvent = {},
             onGrantOverlayPermission = {},

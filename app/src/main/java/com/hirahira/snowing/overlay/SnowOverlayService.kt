@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -32,6 +33,8 @@ class SnowOverlayService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var settingsJob: Job? = null
+    private var stopFuseJob: Job? = null
+    private val isStopping: Boolean get() = stopFuseJob != null
     private var window: SnowOverlayWindow? = null
     // Created in onCreate: the service has no Context before that.
     private lateinit var permissionWatcher: OverlayPermissionWatcher
@@ -39,7 +42,9 @@ class SnowOverlayService : Service() {
     // Nothing to animate while the display is off.
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            window?.setPaused(intent.action == Intent.ACTION_SCREEN_OFF)
+            val screenOff = intent.action == Intent.ACTION_SCREEN_OFF
+            // Nobody watches the last flakes fall out on a dark screen.
+            if (screenOff && isStopping) stopSelf() else window?.setPaused(screenOff)
         }
     }
 
@@ -62,6 +67,10 @@ class SnowOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            beginStop()
+            return START_NOT_STICKY
+        }
         // startForeground must come first: a service started with
         // startForegroundService() crashes if it stops without calling it.
         ServiceCompat.startForeground(
@@ -75,16 +84,41 @@ class SnowOverlayService : Service() {
             return START_NOT_STICKY
         }
         OverlayRuntime.setRunning(true)
+        cancelStop()
         if (settingsJob == null) settingsJob = scope.launch { followSettings() }
         return START_STICKY
     }
 
+    /** Snow stops falling; the service ends when the last flakes are out, or after the fuse (ADR-0006 §5). */
+    private fun beginStop() {
+        val current = window
+        if (current == null) {
+            stopSelf()
+            return
+        }
+        if (isStopping) return
+        current.stopFalling()
+        stopFuseJob = scope.launch {
+            delay(STOP_FUSE_MS)
+            current.fadeOut()
+        }
+    }
+
+    /** Switched back on while stopping: new flakes enter from the top, the falling ones carry on. */
+    private fun cancelStop() {
+        val fuse = stopFuseJob ?: return
+        fuse.cancel()
+        stopFuseJob = null
+        window?.resumeFalling()
+    }
+
     private suspend fun followSettings() {
         appContainer.settingsRepository.settings.collect { settings ->
-            val config = SnowConfigMapper.toConfig(settings)
+            val scene = SnowConfigMapper.toScene(settings)
             val options = SnowConfigMapper.toRenderOptions(settings)
-            val current = window ?: attachWindow(SnowOverlayWindow(this, config)) ?: return@collect
-            current.apply(config, options)
+            val current = window ?: attachWindow(SnowOverlayWindow(this, scene).apply { onDrained = { stopSelf() } })
+                ?: return@collect
+            current.apply(scene, options, immediate = settings.lab.instantChanges)
         }
     }
 
@@ -121,7 +155,13 @@ class SnowOverlayService : Service() {
             0
         }
 
-    private companion object {
-        const val TAG = "SnowOverlayService"
+    companion object {
+        /** Stop falling and end once the snow is gone, instead of vanishing at once. */
+        const val ACTION_STOP = "com.hirahira.snowing.action.STOP_SNOW"
+
+        private const val TAG = "SnowOverlayService"
+
+        /** After this, whatever is still falling fades out (ADR-0006 §5: at most ~22 s). */
+        private const val STOP_FUSE_MS = 20_000L
     }
 }

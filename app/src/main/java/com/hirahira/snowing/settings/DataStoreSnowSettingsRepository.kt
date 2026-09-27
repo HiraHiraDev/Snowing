@@ -37,6 +37,8 @@ class DataStoreSnowSettingsRepository(
                 sway = this[Keys.LAB_SWAY] ?: defaults.lab.sway,
                 showHud = this[Keys.LAB_HUD] ?: defaults.lab.showHud,
                 showTracer = this[Keys.LAB_TRACER] ?: defaults.lab.showTracer,
+                foreground = this[Keys.LAB_FOREGROUND] ?: defaults.lab.foreground,
+                instantChanges = this[Keys.LAB_INSTANT] ?: defaults.lab.instantChanges,
             ),
         )
     }
@@ -48,6 +50,8 @@ class DataStoreSnowSettingsRepository(
         this[Keys.LAB_SWAY] = settings.lab.sway
         this[Keys.LAB_HUD] = settings.lab.showHud
         this[Keys.LAB_TRACER] = settings.lab.showTracer
+        this[Keys.LAB_FOREGROUND] = settings.lab.foreground
+        this[Keys.LAB_INSTANT] = settings.lab.instantChanges
     }
 
     private object Keys {
@@ -57,5 +61,7 @@ class DataStoreSnowSettingsRepository(
         val LAB_SWAY = floatPreferencesKey("lab_sway")
         val LAB_HUD = booleanPreferencesKey("lab_hud")
         val LAB_TRACER = booleanPreferencesKey("lab_tracer")
+        val LAB_FOREGROUND = booleanPreferencesKey("lab_foreground")
+        val LAB_INSTANT = booleanPreferencesKey("lab_instant")
     }
 }

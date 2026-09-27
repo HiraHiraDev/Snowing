@@ -45,6 +45,7 @@ fun SettingSlider(
     valueText: String? = null,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
+    onValueChangeFinished: (() -> Unit)? = null,
 ) {
     Column(modifier.fillMaxWidth()) {
         Row(
@@ -57,7 +58,13 @@ fun SettingSlider(
                 Text(text = valueText, style = SnowingTheme.typography.label, color = SnowingTheme.colors.contentMuted)
             }
         }
-        Slider(value = value, onValueChange = onValueChange, valueRange = valueRange, steps = steps)
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            steps = steps,
+            onValueChangeFinished = onValueChangeFinished,
+        )
     }
 }
 

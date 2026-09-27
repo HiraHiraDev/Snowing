@@ -19,4 +19,8 @@ data class LabSettings(
     val sway: Float = 0.5f,
     val showHud: Boolean = false,
     val showTracer: Boolean = false,
+    /** Rare out-of-focus flakes in front of the snow. */
+    val foreground: Boolean = true,
+    /** Apply changes to falling flakes at once instead of as a front from the top (ADR-0006). */
+    val instantChanges: Boolean = false,
 )

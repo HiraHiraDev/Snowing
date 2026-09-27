@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -29,8 +30,11 @@ class ControlViewModelTest {
     private val snowState = FakeSnowStateRepository()
     private val overlay = FakeOverlayController()
 
+    // Shared with runTest(main) so delays in viewModelScope run on virtual time.
+    private val main = UnconfinedTestDispatcher()
+
     @Before
-    fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    fun setUp() = Dispatchers.setMain(main)
 
     @After
     fun tearDown() = Dispatchers.resetMain()
@@ -112,13 +116,62 @@ class ControlViewModelTest {
     }
 
     @Test
-    fun `slider changes are persisted`() {
+    fun `slider changes are persisted after the throttle`() = runTest(main) {
         val vm = viewModel(labEnabled = true)
         vm.onEvent(ControlEvent.IntensityChanged(0.9f))
         vm.onEvent(ControlEvent.LayersChanged(5))
+        advanceTimeBy(ControlViewModel.SAVE_THROTTLE_MS + 1)
 
         assertEquals(0.9f, settings.state.value.intensity)
         assertEquals(5, settings.state.value.lab.layers)
+    }
+
+    @Test
+    fun `dragging shows every value at once but writes at most once per throttle`() = runTest(main) {
+        val vm = viewModel()
+        collect(vm)
+        // One second of dragging at 60 Hz.
+        for (frame in 1..60) {
+            vm.onEvent(ControlEvent.IntensityChanged(frame / 60f))
+            assertEquals(frame / 60f, vm.uiState.value.intensity)
+            advanceTimeBy(16)
+        }
+
+        val maxWrites = (60 * 16 / ControlViewModel.SAVE_THROTTLE_MS + 1).toInt()
+        assertTrue("wrote ${settings.writes} times", settings.writes <= maxWrites)
+    }
+
+    @Test
+    fun `releasing a slider writes the final value at once`() = runTest(main) {
+        val vm = viewModel()
+        collect(vm)
+        vm.onEvent(ControlEvent.IntensityChanged(0.3f))
+        vm.onEvent(ControlEvent.IntensityChanged(0.7f))
+        vm.onEvent(ControlEvent.SliderReleased)
+
+        assertEquals(0.7f, settings.state.value.intensity)
+        assertEquals(1, settings.writes)
+        assertEquals(0.7f, vm.uiState.value.intensity)
+    }
+
+    @Test
+    fun `switches are written at once`() = runTest(main) {
+        val vm = viewModel(labEnabled = true)
+        collect(vm)
+        vm.onEvent(ControlEvent.HudToggled(true))
+
+        assertTrue(settings.state.value.lab.showHud)
+    }
+
+    @Test
+    fun `an outside change shows once no edit is pending`() = runTest(main) {
+        val vm = viewModel()
+        collect(vm)
+        vm.onEvent(ControlEvent.IntensityChanged(0.3f))
+        vm.onEvent(ControlEvent.SliderReleased)
+
+        settings.state.value = settings.state.value.copy(intensity = 0.95f) // e.g. a tile or a mood
+        assertEquals(0.95f, vm.uiState.value.intensity)
     }
 
     @Test
