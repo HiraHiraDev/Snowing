@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="control_start">Niech pada</string>
+    <string name="control_stop">Zatrzymaj śnieg</string>
+    <string name="control_section_snowfall">Padanie</string>
+    <string name="control_intensity">Intensywność</string>
+    <string name="control_speed">Prędkość</string>
+
+    <string name="permission_title">Pozwól Snowing wyświetlać się nad innymi aplikacjami</string>
+    <string name="permission_body">Śnieg pada nad wszystkim, czego używasz. Android wymaga jednorazowej zgody w ustawieniach systemu.</string>
+    <string name="permission_action">Otwórz ustawienia</string>
+
+    <string name="notification_channel_name">Padanie śniegu</string>
+    <string name="notification_title">Pada śnieg</string>
+    <string name="notification_text">Dotknij, aby dostosować śnieg</string>
+</resources>

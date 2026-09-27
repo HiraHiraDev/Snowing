@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only for platform surfaces drawn before Compose (window, launcher icon). -->
+    <color name="window_background">#0B1020</color>
+    <color name="ic_launcher_background">#0B1020</color>
+</resources>

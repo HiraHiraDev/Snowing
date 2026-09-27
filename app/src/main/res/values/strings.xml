@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Snowing</string>
+
+    <string name="control_start">Let it snow</string>
+    <string name="control_stop">Stop the snow</string>
+    <string name="control_section_snowfall">Snowfall</string>
+    <string name="control_intensity">Intensity</string>
+    <string name="control_speed">Speed</string>
+
+    <string name="permission_title">Allow Snowing to draw over other apps</string>
+    <string name="permission_body">Snow falls on top of everything you use. Android asks you to allow this once, in system settings.</string>
+    <string name="permission_action">Open settings</string>
+
+    <string name="notification_channel_name">Snowfall</string>
+    <string name="notification_title">It\'s snowing</string>
+    <string name="notification_text">Tap to adjust the snow</string>
+
+    <!-- Prototype lab, debug builds only. Not translated on purpose. -->
+    <string name="lab_title" translatable="false">Prototype lab</string>
+    <string name="lab_hint" translatable="false">Debug builds only. Tools for tuning the snowfall.</string>
+    <string name="lab_layers" translatable="false">Depth layers</string>
+    <string name="lab_sway" translatable="false">Sway</string>
+    <string name="lab_hud" translatable="false">Frame stats (HUD)</string>
+    <string name="lab_tracer" translatable="false">Mark one flake (tracer)</string>
+</resources>
