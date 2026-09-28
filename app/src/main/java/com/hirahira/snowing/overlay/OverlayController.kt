@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 interface OverlayController {
     val isRunning: StateFlow<Boolean>
 
-    /** "Display over other apps" — granted by the user in system settings. */
+    /** "Display over other apps", granted in system settings. */
     fun hasPermission(): Boolean
 
     fun start()

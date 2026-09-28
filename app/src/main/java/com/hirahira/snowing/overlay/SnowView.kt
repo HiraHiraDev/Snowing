@@ -18,11 +18,7 @@ data class RenderOptions(
     val showTracer: Boolean = false,
 )
 
-/**
- * Draws the snow and the foreground bokeh flakes and drives both from vsync.
- * dt comes from Choreographer frame timestamps, so the simulation runs on real
- * time at any refresh rate.
- */
+/** Draws the snow and the bokeh in front of it; dt comes from Choreographer frame timestamps. */
 @SuppressLint("ViewConstructor")
 internal class SnowView(
     context: Context,

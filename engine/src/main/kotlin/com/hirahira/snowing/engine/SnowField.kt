@@ -7,24 +7,12 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
- * Time-based snowfall simulation with no Android dependencies.
+ * Time-based snowfall: moves by `velocity * dt`, so it looks the same at any
+ * refresh rate, and keeps state in flat arrays, so a frame allocates nothing.
  *
- * Positions advance by `velocity * dt`, where dt is the real time between
- * frames, so a flake covers the same distance at 60, 90 or 120 Hz. State lives
- * in flat arrays so a frame allocates nothing.
- *
- * Motion (docs/adr/0009-wind.md): flakes drift in a shared body of air — slow
- * swirls (curl noise), gusts sweeping across the screen and a mean wind — and
- * catch up with it through inertia, plus a small irregular flutter of their own.
- *
- * Continuity (docs/adr/0006-snow-continuity.md): a flake takes all of its
- * parameters, including how strongly it answers the air, when it is born above
- * the top edge and keeps them until it falls out at the bottom. [config] only
- * describes flakes yet to be born, so every change sweeps down the screen like
- * a weather front instead of changing the whole screen at once.
- *
- * Per frame: call [step] with the elapsed time, then read flakes
- * `0 until count` through [x], [y], [radius], [alpha] and [shape].
+ * A flake takes all its parameters when born above the top edge and keeps them
+ * until it falls out (ADR-0006); [config] only describes flakes yet to be born.
+ * Flakes drift in shared air: swirls, gusts and a mean wind (ADR-0009).
  */
 class SnowField(
     config: SnowConfig,
@@ -45,7 +33,6 @@ class SnowField(
     var isFalling: Boolean = true
         private set
 
-    /** True once stopped and every flake has left the screen. */
     val isEmpty: Boolean get() = count == 0
 
     // What a flake born right now gets: eases toward [config] so the front has a soft edge.
@@ -66,7 +53,6 @@ class SnowField(
     private var frame = 0
     private var airStride = 1
 
-    // Visibility of the whole field: 1 normally, eases to 0 in [fadeOut].
     private var fade = 1f
     private var fadeTarget = 1f
 
@@ -88,7 +74,6 @@ class SnowField(
     private var radiusPx = FloatArray(0)
     private var baseAlpha = FloatArray(0)
 
-    // Motion.
     private var posX = FloatArray(0)
     private var posY = FloatArray(0)
     private var velX = FloatArray(0)
@@ -197,10 +182,6 @@ class SnowField(
     /** Fall speed of flake [i] in still air, px/s. The air adds to it and takes from it. */
     fun fallSpeed(i: Int): Float = fallPx[i]
 
-    /**
-     * Moves one flake through the air: velocity eases toward the local air
-     * speed (inertia), the fall speed gains or loses whatever the swirls add.
-     */
     private fun advance(i: Int, dt: Float) {
         // The air changes over seconds and inertia smooths it further, so ~20
         // samples a second are indistinguishable from one per frame.
@@ -232,7 +213,6 @@ class SnowField(
         airY[i] = -dPsiDx * eddyPx[i] * VERTICAL_EDDY
     }
 
-    /** A flake blown off one side comes back on the other, once it is fully out of sight. */
     private fun wrapSideways(i: Int) {
         // Per flake, so flakes born later with other sizes never change where this one wraps.
         val margin = radiusPx[i] + flutterPx[i]
@@ -408,13 +388,11 @@ class SnowField(
         /** Longest step simulated in one go; after a hitch flakes resume instead of teleporting. */
         const val MAX_STEP_SECONDS = 0.1f
 
-        /** Hard cap, regardless of density and screen size. */
         const val MAX_FLAKES = 1500
 
         /** Time constant of the soft front edge: ~95% of a change after 3τ ≈ 2 s. */
         const val FRONT_TAU_SECONDS = 0.6f
 
-        /** Duration of [fadeOut]. */
         const val FADE_SECONDS = 2f
 
         /** Height of the respawn band above the screen, as a fraction of screen height. */

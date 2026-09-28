@@ -12,8 +12,8 @@ import com.hirahira.snowing.engine.SnowField
 
 /**
  * A full-screen, non-interactive window above other apps.
- * Window flags and alpha are what keep touches passing through —
- * see docs/adr/0001-overlay-window.md before changing them.
+ * Window flags and alpha are what keep touches passing through: read
+ * docs/adr/0001-overlay-window.md before changing them.
  */
 internal class SnowOverlayWindow(context: Context, initial: SnowScene) {
 

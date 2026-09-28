@@ -28,7 +28,7 @@ fun ControlRoute(viewModel: ControlViewModel = viewModel(factory = ControlViewMo
     val context = LocalContext.current
 
     // Permission is granted outside the app, and the overlay may have died
-    // while we were away (force stop, task manager) — re-sync on return.
+    // while we were away (force stop, task manager), so re-sync on return.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.onEvent(ControlEvent.Resumed)
     }

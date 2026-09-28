@@ -11,12 +11,9 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * Pre-rendered flake shapes in one bitmap, so every flake of a field is drawn
- * from the same texture and the GPU can batch them. Built once per window;
- * nothing here runs per frame.
- *
- * [extent] maps a flake's radius to the half-size of the drawn square: the soft
- * falloff reaches past the radius the eye reads as the flake's size.
+ * Flake shapes in one bitmap, so the GPU can batch a whole field. [extent] maps
+ * a radius to the half-size of the drawn square: soft falloff reaches past the
+ * size the eye reads.
  */
 internal class SpriteAtlas(
     val bitmap: Bitmap,
@@ -46,7 +43,6 @@ internal object SnowSprites {
         cellPx = BOKEH_CELL_PX,
         random = random,
         wobble = floatArrayOf(),
-        // Gaussian falloff: no edge at all, just a glow.
         profile = { d -> exp(-4.5f * d * d) },
         edgeRadius = 0.46f,
         // The eye reads the size where the glow is half bright, far inside the cell.

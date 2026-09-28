@@ -1,15 +1,9 @@
 package com.hirahira.snowing.engine
 
 /**
- * Physical description of a snowfall.
- *
- * Distances are in dp and times in seconds, so the same config looks the same
- * on every screen and at every refresh rate. [SnowField] converts to pixels.
- * Values describe the front (closest) depth layer; deeper layers are derived
- * from them — smaller, slower and fainter.
- *
- * The air is shared by all flakes (docs/adr/0009-wind.md): [wind], [gusts] and
- * [turbulence] say how strongly a flake born with this config responds to it.
+ * A snowfall in dp and seconds, so it looks the same on every screen. Values
+ * describe the closest depth layer; deeper layers are smaller, slower and fainter.
+ * [wind], [gusts] and [turbulence] set how strongly flakes answer the shared air (ADR-0009).
  */
 data class SnowConfig(
     /** Flakes per 10 000 dp² of screen. A typical phone is ~30 such units. */
@@ -24,7 +18,6 @@ data class SnowConfig(
     val layers: Int,
     /** Mean horizontal wind, dp/s. Positive blows to the right. */
     val wind: Float,
-    /** Opacity of a flake, 0..1. */
     val opacity: Float,
     /** Strength of the gusts that sweep across the screen, dp/s. */
     val gusts: Float = 0f,

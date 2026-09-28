@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Draws the snow while it runs; knows nothing about whether it *should* run.
- * That choice lives in [com.hirahira.snowing.power.SnowSwitch] — this service
+ * That choice lives in [com.hirahira.snowing.power.SnowSwitch]; this service
  * only reports reality through [OverlayRuntime].
  * Foreground, because Android kills background services that hold a window.
  * See docs/adr/0001-overlay-window.md and docs/adr/0005-snow-state.md.
