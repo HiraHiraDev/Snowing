@@ -14,7 +14,9 @@ data class ControlUiState(
 
 data class LabUiState(
     val layers: Int,
-    val sway: Float,
+    val turbulence: Float,
+    val wind: Float,
+    val gusts: Float,
     val showHud: Boolean,
     val showTracer: Boolean,
     val foreground: Boolean,
@@ -28,7 +30,9 @@ sealed interface ControlEvent {
     data class IntensityChanged(val value: Float) : ControlEvent
     data class SpeedChanged(val value: Float) : ControlEvent
     data class LayersChanged(val value: Int) : ControlEvent
-    data class SwayChanged(val value: Float) : ControlEvent
+    data class TurbulenceChanged(val value: Float) : ControlEvent
+    data class WindChanged(val value: Float) : ControlEvent
+    data class GustsChanged(val value: Float) : ControlEvent
     /** The finger left a slider: write the final value now. */
     data object SliderReleased : ControlEvent
     data class HudToggled(val enabled: Boolean) : ControlEvent

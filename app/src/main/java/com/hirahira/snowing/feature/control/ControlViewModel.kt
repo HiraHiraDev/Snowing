@@ -71,7 +71,9 @@ class ControlViewModel(
             is ControlEvent.IntensityChanged -> edit { it.copy(intensity = event.value) }
             is ControlEvent.SpeedChanged -> edit { it.copy(speed = event.value) }
             is ControlEvent.LayersChanged -> editLab { it.copy(layers = event.value) }
-            is ControlEvent.SwayChanged -> editLab { it.copy(sway = event.value) }
+            is ControlEvent.TurbulenceChanged -> editLab { it.copy(turbulence = event.value) }
+            is ControlEvent.WindChanged -> editLab { it.copy(wind = event.value) }
+            is ControlEvent.GustsChanged -> editLab { it.copy(gusts = event.value) }
             ControlEvent.SliderReleased -> saveNow()
             is ControlEvent.HudToggled -> editLab(now = true) { it.copy(showHud = event.enabled) }
             is ControlEvent.TracerToggled -> editLab(now = true) { it.copy(showTracer = event.enabled) }
@@ -114,7 +116,9 @@ class ControlViewModel(
 
     private fun LabSettings.toUiState() = LabUiState(
         layers = layers,
-        sway = sway,
+        turbulence = turbulence,
+        wind = wind,
+        gusts = gusts,
         showHud = showHud,
         showTracer = showTracer,
         foreground = foreground,

@@ -29,7 +29,9 @@ class PerfControlActivity : ComponentActivity() {
                     speed = extras.floatOr(EXTRA_SPEED, current.speed),
                     lab = current.lab.copy(
                         layers = extras.intOr(EXTRA_LAYERS, current.lab.layers),
-                        sway = extras.floatOr(EXTRA_SWAY, current.lab.sway),
+                        turbulence = extras.floatOr(EXTRA_TURBULENCE, current.lab.turbulence),
+                        wind = extras.floatOr(EXTRA_WIND, current.lab.wind),
+                        gusts = extras.floatOr(EXTRA_GUSTS, current.lab.gusts),
                         showHud = extras.booleanOr(EXTRA_HUD, current.lab.showHud),
                         foreground = extras.booleanOr(EXTRA_BOKEH, current.lab.foreground),
                     ),
@@ -54,7 +56,9 @@ class PerfControlActivity : ComponentActivity() {
         const val EXTRA_INTENSITY = "intensity"
         const val EXTRA_SPEED = "speed"
         const val EXTRA_LAYERS = "layers"
-        const val EXTRA_SWAY = "sway"
+        const val EXTRA_TURBULENCE = "turbulence"
+        const val EXTRA_WIND = "wind"
+        const val EXTRA_GUSTS = "gusts"
         const val EXTRA_HUD = "hud"
         const val EXTRA_BOKEH = "bokeh"
     }

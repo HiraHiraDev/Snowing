@@ -17,27 +17,33 @@ object SnowTuning {
     /** Flake radius from the farthest to the closest layer, dp. */
     val RadiusRange = 1.2f..4.2f
 
-    /** Sway amplitude of the closest layer, dp. */
-    val SwayRange = 0f..28f
+    /** Strongest mean wind either way, dp/s (lab slider -1..1). */
+    const val WIND_MAX_DP_PER_S = 60f
 
-    const val SWAY_FREQUENCY_HZ = 0.35f
-    const val WIND_DP_PER_S = 0f
+    /** Gust strength, dp/s. */
+    val GustsRange = 0f..45f
+
+    /** Speed of the swirls in the air, dp/s. */
+    val TurbulenceRange = 0f..40f
+
+    /** Flutter of each flake around its path, dp; follows the turbulence slider. */
+    val FlutterRange = 0f..5f
+
     const val OPACITY = 0.95f
 
-    // Bokeh: out-of-focus flakes right in front of the lens. Rare, large, faint,
-    // and faster and swayier than the snow because they are so close.
+    // Bokeh: out-of-focus flakes right in front of the lens. Rare, heavily blurred,
+    // about the size of a snowflake, and faster than the snow because they are so close.
 
-    /** Flakes per 10 000 dp²; with the respawn gap about one is on screen at a time. */
-    const val BOKEH_DENSITY = 0.08f
+    /** Flakes per 10 000 dp²; with the respawn gap only a few are on screen at a time. */
+    const val BOKEH_DENSITY = 0.15f
 
     /** Radius from the farther to the closer bokeh layer, dp. */
-    val BokehRadiusRange = 16f..30f
+    val BokehRadiusRange = 4f..8f
 
     const val BOKEH_LAYERS = 2
     const val BOKEH_MOTION_FACTOR = 2.2f
-    const val BOKEH_SWAY_FACTOR = 2f
-    const val BOKEH_SWAY_FREQUENCY_HZ = 0.2f
-    const val BOKEH_OPACITY = 0.28f
+    const val BOKEH_FLUTTER_FACTOR = 2f
+    const val BOKEH_OPACITY = 0.4f
 
     /** Gap above the screen before a bokeh flake returns, in screen heights: they pass only now and then. */
     const val BOKEH_RESPAWN_SPREAD = 1.5f
@@ -62,9 +68,10 @@ object SnowConfigMapper {
         minRadius = SnowTuning.RadiusRange.start,
         maxRadius = SnowTuning.RadiusRange.endInclusive,
         layers = settings.lab.layers.coerceAtLeast(1),
-        swayAmplitude = SnowTuning.SwayRange.at(settings.lab.sway),
-        swayFrequency = SnowTuning.SWAY_FREQUENCY_HZ,
-        wind = SnowTuning.WIND_DP_PER_S,
+        wind = settings.lab.wind.coerceIn(-1f, 1f) * SnowTuning.WIND_MAX_DP_PER_S,
+        gusts = SnowTuning.GustsRange.at(settings.lab.gusts),
+        turbulence = SnowTuning.TurbulenceRange.at(settings.lab.turbulence),
+        flutter = SnowTuning.FlutterRange.at(settings.lab.turbulence),
         opacity = SnowTuning.OPACITY,
     )
 
@@ -75,9 +82,10 @@ object SnowConfigMapper {
         minRadius = SnowTuning.BokehRadiusRange.start,
         maxRadius = SnowTuning.BokehRadiusRange.endInclusive,
         layers = SnowTuning.BOKEH_LAYERS,
-        swayAmplitude = snow.swayAmplitude * SnowTuning.BOKEH_SWAY_FACTOR,
-        swayFrequency = SnowTuning.BOKEH_SWAY_FREQUENCY_HZ,
         wind = snow.wind * SnowTuning.BOKEH_MOTION_FACTOR,
+        gusts = snow.gusts * SnowTuning.BOKEH_MOTION_FACTOR,
+        turbulence = snow.turbulence * SnowTuning.BOKEH_MOTION_FACTOR,
+        flutter = snow.flutter * SnowTuning.BOKEH_FLUTTER_FACTOR,
         opacity = SnowTuning.BOKEH_OPACITY,
         respawnSpread = SnowTuning.BOKEH_RESPAWN_SPREAD,
     )

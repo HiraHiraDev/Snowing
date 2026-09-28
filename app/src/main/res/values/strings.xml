@@ -20,7 +20,9 @@
     <string name="lab_title" translatable="false">Prototype lab</string>
     <string name="lab_hint" translatable="false">Debug builds only. Tools for tuning the snowfall.</string>
     <string name="lab_layers" translatable="false">Depth layers</string>
-    <string name="lab_sway" translatable="false">Sway</string>
+    <string name="lab_turbulence" translatable="false">Turbulence (swirls, flutter)</string>
+    <string name="lab_wind" translatable="false">Wind (left ↔ right)</string>
+    <string name="lab_gusts" translatable="false">Gusts</string>
     <string name="lab_hud" translatable="false">Frame stats (HUD)</string>
     <string name="lab_tracer" translatable="false">Mark one flake (tracer)</string>
     <string name="lab_foreground" translatable="false">Bokeh flakes in front</string>

@@ -107,10 +107,25 @@ private fun LabCard(lab: LabUiState, onEvent: (ControlEvent) -> Unit) {
             onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
         )
         SettingSlider(
-            label = stringResource(R.string.lab_sway),
-            value = lab.sway,
-            valueText = lab.sway.asPercent(),
-            onValueChange = { onEvent(ControlEvent.SwayChanged(it)) },
+            label = stringResource(R.string.lab_turbulence),
+            value = lab.turbulence,
+            valueText = lab.turbulence.asPercent(),
+            onValueChange = { onEvent(ControlEvent.TurbulenceChanged(it)) },
+            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
+        )
+        SettingSlider(
+            label = stringResource(R.string.lab_wind),
+            value = lab.wind,
+            valueText = lab.wind.asPercent(),
+            valueRange = -1f..1f,
+            onValueChange = { onEvent(ControlEvent.WindChanged(it)) },
+            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
+        )
+        SettingSlider(
+            label = stringResource(R.string.lab_gusts),
+            value = lab.gusts,
+            valueText = lab.gusts.asPercent(),
+            onValueChange = { onEvent(ControlEvent.GustsChanged(it)) },
             onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
         )
         SettingSwitch(
@@ -153,7 +168,9 @@ private fun ControlScreenPreview() {
                 speed = 0.4f,
                 lab = LabUiState(
                     layers = 3,
-                    sway = 0.5f,
+                    turbulence = 0.5f,
+                    wind = 0f,
+                    gusts = 0.4f,
                     showHud = true,
                     showTracer = false,
                     foreground = true,

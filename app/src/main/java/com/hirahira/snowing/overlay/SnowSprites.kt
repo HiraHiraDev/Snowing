@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Rect
 import kotlin.math.PI
 import kotlin.math.atan2
+import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -39,16 +40,17 @@ internal object SnowSprites {
         extent = 1.6f,
     )
 
-    /** Out-of-focus flakes right in front of the lens: a large, faint, very soft disc. */
+    /** Out-of-focus flakes right in front of the lens: a heavily blurred dot. */
     fun bokeh(random: Random = Random.Default): SpriteAtlas = atlas(
         variants = BOKEH_VARIANTS,
         cellPx = BOKEH_CELL_PX,
         random = random,
-        wobble = floatArrayOf(0f, 0f, 0f, 0f, 0f, 0.03f),
-        // A flat body with a faintly brighter rim, the way defocused highlights look.
-        profile = { d -> (0.6f + 0.25f * smoothstep(0.55f, 0.85f, d)) * (1f - smoothstep(0.8f, 1f, d)) },
+        wobble = floatArrayOf(),
+        // Gaussian falloff: no edge at all, just a glow.
+        profile = { d -> exp(-4.5f * d * d) },
         edgeRadius = 0.46f,
-        extent = 1.1f,
+        // The eye reads the size where the glow is half bright, far inside the cell.
+        extent = 2.8f,
     )
 
     private fun atlas(
@@ -95,7 +97,7 @@ internal object SnowSprites {
 
     private const val FLAKE_VARIANTS = 8
     private const val FLAKE_CELL_PX = 64
-    private const val BOKEH_VARIANTS = 3
+    private const val BOKEH_VARIANTS = 1
     private const val BOKEH_CELL_PX = 128
     private const val TWO_PI = (2 * PI).toFloat()
 }

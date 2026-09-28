@@ -16,7 +16,12 @@ data class SnowSettings(
  */
 data class LabSettings(
     val layers: Int = 3,
-    val sway: Float = 0.5f,
+    /** Swirls in the air and each flake's flutter, 0..1. */
+    val turbulence: Float = 0.5f,
+    /** Mean wind, -1 (left) .. 1 (right). The wind wheel will set this later (ADR-0007). */
+    val wind: Float = 0f,
+    /** Gusts sweeping across the screen, 0..1. */
+    val gusts: Float = 0.4f,
     val showHud: Boolean = false,
     val showTracer: Boolean = false,
     /** Rare out-of-focus flakes in front of the snow. */
