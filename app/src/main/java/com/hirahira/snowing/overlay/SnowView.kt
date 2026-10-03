@@ -9,6 +9,8 @@ import android.graphics.RectF
 import android.os.Build
 import android.view.Choreographer
 import android.view.View
+import android.view.WindowInsets
+import androidx.core.view.WindowInsetsCompat
 import com.hirahira.snowing.engine.FramePacer
 import com.hirahira.snowing.engine.QualityPolicy
 import com.hirahira.snowing.engine.SnowField
@@ -68,6 +70,8 @@ internal class SnowView(
     private val choreographer = Choreographer.getInstance()
     private val density = resources.displayMetrics.density
     private val stats = FrameStats()
+    private var hudInsetLeft = 0
+    private var hudInsetTop = 0
     private val pacer = FramePacer()
     private var attached = false
     private var looping = false
@@ -98,6 +102,15 @@ internal class SnowView(
         attached = false
         updateLoop()
         super.onDetachedFromWindow()
+    }
+
+    /** The window spans the whole display (ADR-0001); the HUD keeps clear of system bars and the cutout. */
+    override fun onApplyWindowInsets(insets: WindowInsets): WindowInsets {
+        val safe = WindowInsetsCompat.toWindowInsetsCompat(insets, this)
+            .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+        hudInsetLeft = safe.left
+        hudInsetTop = safe.top
+        return super.onApplyWindowInsets(insets)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -156,9 +169,10 @@ internal class SnowView(
     }
 
     private fun drawHud(canvas: Canvas) {
-        val x = HUD_LEFT_DP * density
+        val x = hudInsetLeft + HUD_MARGIN_DP * density
         val lineHeight = hudPaint.textSize * 1.3f
-        var y = HUD_TOP_DP * density
+        // drawText takes the baseline, so the first line starts one ascent below the margin.
+        var y = hudInsetTop + HUD_MARGIN_DP * density - hudPaint.ascent()
         val lines = listOf(
             String.format(Locale.US, "fps %.0f   dt %.1f ms   worst %.1f ms", stats.fps, stats.averageMs, stats.worstMs),
             String.format(
@@ -204,8 +218,7 @@ internal class SnowView(
         const val TRACER_STROKE_DP = 2f
         const val TRACER_GAP_DP = 6f
         const val HUD_TEXT_DP = 13f
-        const val HUD_LEFT_DP = 16f
-        const val HUD_TOP_DP = 120f
+        const val HUD_MARGIN_DP = 16f
     }
 }
 
