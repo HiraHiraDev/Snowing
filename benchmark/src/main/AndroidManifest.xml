@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Macrobenchmark checks that the measured packages are installed and profileable. -->
+    <queries>
+        <package android:name="com.hirahira.snowing" />
+        <package android:name="com.hirahira.snowing.scrollapp" />
+    </queries>
+</manifest>

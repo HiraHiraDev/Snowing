@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Snowing"
-include(":app", ":engine")
+include(":app", ":engine", ":scrollapp", ":benchmark")
