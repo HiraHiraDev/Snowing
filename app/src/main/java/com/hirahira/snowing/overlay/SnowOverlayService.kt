@@ -44,7 +44,7 @@ class SnowOverlayService : Service() {
         override fun onReceive(context: Context, intent: Intent) {
             val screenOff = intent.action == Intent.ACTION_SCREEN_OFF
             // Nobody watches the last flakes fall out on a dark screen.
-            if (screenOff && isStopping) stopSelf() else window?.setPaused(screenOff)
+            if (screenOff && isStopping) stopSelf() else window?.setScreenOn(!screenOff)
         }
     }
 
@@ -97,6 +97,11 @@ class SnowOverlayService : Service() {
             return
         }
         if (isStopping) return
+        // A paused loop never drains, and nobody sees the snow anyway.
+        if (current.isPaused) {
+            stopSelf()
+            return
+        }
         current.stopFalling()
         stopFuseJob = scope.launch {
             delay(STOP_FUSE_MS)
@@ -113,30 +118,32 @@ class SnowOverlayService : Service() {
     }
 
     private suspend fun followSettings() {
-        appContainer.settingsRepository.settings.collect { settings ->
-            val scene = SnowConfigMapper.toScene(settings)
-            val options = SnowConfigMapper.toRenderOptions(settings)
-            val current = window ?: attachWindow(SnowOverlayWindow(this, scene).apply { onDrained = { stopSelf() } })
-                ?: return@collect
-            current.apply(scene, options, immediate = settings.lab.instantChanges)
+        val container = appContainer
+        container.settingsRepository.settings.collect { settings ->
+            val current = window
+            if (current != null) {
+                current.apply(settings)
+            } else {
+                attachWindow(
+                    SnowOverlayWindow(this, settings, container.deviceSignals).apply { onDrained = { stopSelf() } },
+                )
+            }
         }
     }
 
     /** Permission can disappear between the check and the attach; the window manager then throws. */
-    private fun attachWindow(candidate: SnowOverlayWindow): SnowOverlayWindow? =
+    private fun attachWindow(candidate: SnowOverlayWindow) {
         try {
             candidate.attach()
             window = candidate
-            candidate
         } catch (e: WindowManager.BadTokenException) {
             Log.w(TAG, "Overlay window rejected", e)
             stopSelf()
-            null
         } catch (e: SecurityException) {
             Log.w(TAG, "Overlay permission missing", e)
             stopSelf()
-            null
         }
+    }
 
     override fun onDestroy() {
         scope.cancel()

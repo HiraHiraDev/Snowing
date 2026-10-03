@@ -6,8 +6,11 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
+import android.os.Build
 import android.view.Choreographer
 import android.view.View
+import com.hirahira.snowing.engine.FramePacer
+import com.hirahira.snowing.engine.QualityPolicy
 import com.hirahira.snowing.engine.SnowField
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -18,12 +21,17 @@ data class RenderOptions(
     val showTracer: Boolean = false,
 )
 
-/** Draws the snow and the bokeh in front of it; dt comes from Choreographer frame timestamps. */
+/**
+ * Draws the snow and the bokeh in front of it; dt comes from Choreographer frame
+ * timestamps. Draws only on the vsyncs [FramePacer] picks and reports each drawn
+ * frame to [quality] (ADR-0008).
+ */
 @SuppressLint("ViewConstructor")
 internal class SnowView(
     context: Context,
     private val snow: SnowField,
     private val foreground: SnowField,
+    private val quality: QualityPolicy,
 ) : View(context), Choreographer.FrameCallback {
 
     var renderOptions: RenderOptions = RenderOptions()
@@ -38,6 +46,21 @@ internal class SnowView(
             updateLoop()
         }
 
+    var refreshRate: Float
+        get() = pacer.refreshRate
+        set(value) {
+            pacer.refreshRate = value
+        }
+
+    var fpsCap: Int
+        get() = pacer.fpsCap
+        set(value) {
+            pacer.fpsCap = value
+            // Lets the display drop to a lower refresh rate when nothing else needs it.
+            // Below API 35 a plain View has no public way to vote; the pacer still skips frames.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) setRequestedFrameRate(value.toFloat())
+        }
+
     /** Called once when both fields have stopped falling and are empty. */
     var onDrained: (() -> Unit)? = null
     private var drainedReported = false
@@ -45,6 +68,7 @@ internal class SnowView(
     private val choreographer = Choreographer.getInstance()
     private val density = resources.displayMetrics.density
     private val stats = FrameStats()
+    private val pacer = FramePacer()
     private var attached = false
     private var looping = false
     private var lastFrameNanos = 0L
@@ -83,16 +107,19 @@ internal class SnowView(
 
     override fun doFrame(frameTimeNanos: Long) {
         if (!looping) return
+        choreographer.postFrameCallback(this)
+        if (!pacer.shouldDraw(frameTimeNanos)) return
         if (lastFrameNanos != 0L) {
             val dt = (frameTimeNanos - lastFrameNanos) / NANOS_PER_SECOND
             snow.step(dt)
             foreground.step(dt)
             stats.record(dt)
+            // May change the level or pause the loop; the step above is already done.
+            quality.onFrame(dt, pacer.targetIntervalSeconds)
             reportDrained()
         }
         lastFrameNanos = frameTimeNanos
         invalidate()
-        choreographer.postFrameCallback(this)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -141,6 +168,16 @@ internal class SnowView(
                 foreground.count,
                 if (snow.count > 0) snow.fallSpeed(0) else 0f,
             ),
+            String.format(
+                Locale.US,
+                "quality %s%s   %.0f fps of %.0f Hz   missed %.1f%%",
+                quality.level,
+                if (quality.forced != null) " (forced)" else "",
+                pacer.targetFps,
+                pacer.refreshRate,
+                quality.missedFraction * 100f,
+            ),
+            "battery saver ${if (quality.powerSave) "on" else "off"}   thermal ${quality.thermal}",
         )
         for (line in lines) {
             canvas.drawText(line, x, y, hudPaint)
@@ -153,6 +190,8 @@ internal class SnowView(
         if (shouldLoop && !looping) {
             looping = true
             lastFrameNanos = 0L
+            pacer.reset()
+            quality.onLoopStarted()
             choreographer.postFrameCallback(this)
         } else if (!shouldLoop && looping) {
             looping = false

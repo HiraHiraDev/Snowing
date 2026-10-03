@@ -28,4 +28,8 @@ data class LabSettings(
     val foreground: Boolean = true,
     /** Apply changes to falling flakes at once instead of as a front from the top (ADR-0006). */
     val instantChanges: Boolean = false,
+    /** Pins the quality level for testing; [LabQuality.AUTO] lets the device decide (ADR-0008). */
+    val quality: LabQuality = LabQuality.AUTO,
 )
+
+enum class LabQuality { AUTO, HIGH, MEDIUM, LOW, SAVER }

@@ -2,6 +2,8 @@ package com.hirahira.snowing
 
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
+import com.hirahira.snowing.overlay.AndroidDeviceSignals
+import com.hirahira.snowing.overlay.DeviceSignals
 import com.hirahira.snowing.overlay.OverlayController
 import com.hirahira.snowing.overlay.ServiceOverlayController
 import com.hirahira.snowing.power.DataStoreSnowStateRepository
@@ -23,6 +25,8 @@ class AppContainer(context: Context) {
         DataStoreSnowSettingsRepository(appContext.snowSettingsDataStore)
 
     val overlayController: OverlayController = ServiceOverlayController(appContext)
+
+    val deviceSignals: DeviceSignals = AndroidDeviceSignals(appContext)
 
     val snowSwitch = SnowSwitch(
         stateRepository = DataStoreSnowStateRepository(appContext.snowStateDataStore),

@@ -1,6 +1,8 @@
 package com.hirahira.snowing.overlay
 
+import com.hirahira.snowing.engine.QualityLevel
 import com.hirahira.snowing.engine.SnowConfig
+import com.hirahira.snowing.settings.LabQuality
 import com.hirahira.snowing.settings.SnowSettings
 
 /**
@@ -57,9 +59,21 @@ data class SnowScene(
 
 object SnowConfigMapper {
 
-    fun toScene(settings: SnowSettings): SnowScene {
+    /** The user's snow, thinned out by [level] (ADR-0008 §2). */
+    fun toScene(settings: SnowSettings, level: QualityLevel): SnowScene {
         val snow = toConfig(settings)
-        return SnowScene(snow = snow, foreground = foregroundFor(snow, enabled = settings.lab.foreground))
+        return SnowScene(
+            snow = level.apply(snow),
+            foreground = level.apply(foregroundFor(snow, enabled = settings.lab.foreground)),
+        )
+    }
+
+    fun forcedQuality(settings: SnowSettings): QualityLevel? = when (settings.lab.quality) {
+        LabQuality.AUTO -> null
+        LabQuality.HIGH -> QualityLevel.HIGH
+        LabQuality.MEDIUM -> QualityLevel.MEDIUM
+        LabQuality.LOW -> QualityLevel.LOW
+        LabQuality.SAVER -> QualityLevel.SAVER
     }
 
     fun toConfig(settings: SnowSettings): SnowConfig = SnowConfig(
