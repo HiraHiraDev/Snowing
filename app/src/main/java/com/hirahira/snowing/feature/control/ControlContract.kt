@@ -1,5 +1,7 @@
 package com.hirahira.snowing.feature.control
 
+import com.hirahira.snowing.settings.LabQuality
+
 data class ControlUiState(
     /** The user's choice, not whether the overlay is up this instant (ADR-0005). */
     val snowEnabled: Boolean = false,
@@ -21,6 +23,7 @@ data class LabUiState(
     val showTracer: Boolean,
     val foreground: Boolean,
     val instantChanges: Boolean,
+    val quality: LabQuality,
 )
 
 sealed interface ControlEvent {
@@ -33,6 +36,7 @@ sealed interface ControlEvent {
     data class TurbulenceChanged(val value: Float) : ControlEvent
     data class WindChanged(val value: Float) : ControlEvent
     data class GustsChanged(val value: Float) : ControlEvent
+    data class QualityChanged(val value: LabQuality) : ControlEvent
     /** The finger left a slider: write the final value now. */
     data object SliderReleased : ControlEvent
     data class HudToggled(val enabled: Boolean) : ControlEvent

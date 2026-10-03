@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.hirahira.snowing.appContainer
+import com.hirahira.snowing.settings.LabQuality
 import kotlinx.coroutines.launch
 
 /**
@@ -11,7 +12,7 @@ import kotlinx.coroutines.launch
  * variant and switches it on or off without touching the UI.
  *
  *     adb shell am start -n com.hirahira.snowing/.debug.PerfControlActivity \
- *         --ez snow true --ef intensity 1.0 --ef speed 1.0 --ei layers 5 --ez bokeh true
+ *         --ez snow true --ef intensity 1.0 --ef speed 1.0 --ei layers 5 --ez bokeh true --es quality low
  *
  * Every extra is optional; only the ones given change. Guarded by the DUMP
  * permission, which adb shell holds and regular apps cannot get.
@@ -34,6 +35,7 @@ class PerfControlActivity : ComponentActivity() {
                         gusts = extras.floatOr(EXTRA_GUSTS, current.lab.gusts),
                         showHud = extras.booleanOr(EXTRA_HUD, current.lab.showHud),
                         foreground = extras.booleanOr(EXTRA_BOKEH, current.lab.foreground),
+                        quality = extras.qualityOr(current.lab.quality),
                     ),
                 )
             }
@@ -49,6 +51,11 @@ class PerfControlActivity : ComponentActivity() {
 
     private fun Bundle.intOr(key: String, fallback: Int) = if (containsKey(key)) getInt(key) else fallback
 
+    private fun Bundle.qualityOr(fallback: LabQuality): LabQuality {
+        val name = getString(EXTRA_QUALITY) ?: return fallback
+        return LabQuality.entries.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: fallback
+    }
+
     private fun Bundle.booleanOr(key: String, fallback: Boolean) = if (containsKey(key)) getBoolean(key) else fallback
 
     private companion object {
@@ -61,5 +68,6 @@ class PerfControlActivity : ComponentActivity() {
         const val EXTRA_GUSTS = "gusts"
         const val EXTRA_HUD = "hud"
         const val EXTRA_BOKEH = "bokeh"
+        const val EXTRA_QUALITY = "quality"
     }
 }

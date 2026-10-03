@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -41,6 +42,9 @@ class DataStoreSnowSettingsRepository(
                 showTracer = this[Keys.LAB_TRACER] ?: defaults.lab.showTracer,
                 foreground = this[Keys.LAB_FOREGROUND] ?: defaults.lab.foreground,
                 instantChanges = this[Keys.LAB_INSTANT] ?: defaults.lab.instantChanges,
+                quality = this[Keys.LAB_QUALITY]
+                    ?.let { name -> LabQuality.entries.firstOrNull { it.name == name } }
+                    ?: defaults.lab.quality,
             ),
         )
     }
@@ -56,6 +60,7 @@ class DataStoreSnowSettingsRepository(
         this[Keys.LAB_TRACER] = settings.lab.showTracer
         this[Keys.LAB_FOREGROUND] = settings.lab.foreground
         this[Keys.LAB_INSTANT] = settings.lab.instantChanges
+        this[Keys.LAB_QUALITY] = settings.lab.quality.name
     }
 
     private object Keys {
@@ -69,5 +74,6 @@ class DataStoreSnowSettingsRepository(
         val LAB_TRACER = booleanPreferencesKey("lab_tracer")
         val LAB_FOREGROUND = booleanPreferencesKey("lab_foreground")
         val LAB_INSTANT = booleanPreferencesKey("lab_instant")
+        val LAB_QUALITY = stringPreferencesKey("lab_quality")
     }
 }

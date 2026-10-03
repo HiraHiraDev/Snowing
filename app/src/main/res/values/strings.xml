@@ -23,6 +23,7 @@
     <string name="lab_turbulence" translatable="false">Turbulence (swirls, flutter)</string>
     <string name="lab_wind" translatable="false">Wind (left ↔ right)</string>
     <string name="lab_gusts" translatable="false">Gusts</string>
+    <string name="lab_quality" translatable="false">Quality level (AUTO = device decides)</string>
     <string name="lab_hud" translatable="false">Frame stats (HUD)</string>
     <string name="lab_tracer" translatable="false">Mark one flake (tracer)</string>
     <string name="lab_foreground" translatable="false">Bokeh flakes in front</string>

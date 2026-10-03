@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.hirahira.snowing.R
+import com.hirahira.snowing.settings.LabQuality
 import com.hirahira.snowing.ui.components.NoticeCard
 import com.hirahira.snowing.ui.components.PrimaryButton
 import com.hirahira.snowing.ui.components.SectionTitle
@@ -128,6 +129,15 @@ private fun LabCard(lab: LabUiState, onEvent: (ControlEvent) -> Unit) {
             onValueChange = { onEvent(ControlEvent.GustsChanged(it)) },
             onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
         )
+        SettingSlider(
+            label = stringResource(R.string.lab_quality),
+            value = lab.quality.ordinal.toFloat(),
+            valueText = lab.quality.name,
+            valueRange = 0f..LabQuality.entries.lastIndex.toFloat(),
+            steps = LabQuality.entries.size - 2,
+            onValueChange = { onEvent(ControlEvent.QualityChanged(LabQuality.entries[it.roundToInt()])) },
+            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
+        )
         SettingSwitch(
             label = stringResource(R.string.lab_hud),
             checked = lab.showHud,
@@ -175,6 +185,7 @@ private fun ControlScreenPreview() {
                     showTracer = false,
                     foreground = true,
                     instantChanges = false,
+                    quality = LabQuality.AUTO,
                 ),
             ),
             onEvent = {},

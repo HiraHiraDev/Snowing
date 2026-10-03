@@ -74,6 +74,7 @@ class ControlViewModel(
             is ControlEvent.TurbulenceChanged -> editLab { it.copy(turbulence = event.value) }
             is ControlEvent.WindChanged -> editLab { it.copy(wind = event.value) }
             is ControlEvent.GustsChanged -> editLab { it.copy(gusts = event.value) }
+            is ControlEvent.QualityChanged -> editLab { it.copy(quality = event.value) }
             ControlEvent.SliderReleased -> saveNow()
             is ControlEvent.HudToggled -> editLab(now = true) { it.copy(showHud = event.enabled) }
             is ControlEvent.TracerToggled -> editLab(now = true) { it.copy(showTracer = event.enabled) }
@@ -123,6 +124,7 @@ class ControlViewModel(
         showTracer = showTracer,
         foreground = foreground,
         instantChanges = instantChanges,
+        quality = quality,
     )
 
     companion object {
