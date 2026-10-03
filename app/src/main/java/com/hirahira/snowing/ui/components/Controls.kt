@@ -45,6 +45,7 @@ fun SettingSlider(
     valueText: String? = null,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
+    enabled: Boolean = true,
     onValueChangeFinished: (() -> Unit)? = null,
 ) {
     Column(modifier.fillMaxWidth()) {
@@ -63,6 +64,7 @@ fun SettingSlider(
             onValueChange = onValueChange,
             valueRange = valueRange,
             steps = steps,
+            enabled = enabled,
             onValueChangeFinished = onValueChangeFinished,
         )
     }

@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.hirahira.snowing.appContainer
 import com.hirahira.snowing.settings.LabQuality
+import com.hirahira.snowing.settings.MoodChoice
 import kotlinx.coroutines.launch
 
 /**
@@ -12,7 +13,10 @@ import kotlinx.coroutines.launch
  * variant and switches it on or off without touching the UI.
  *
  *     adb shell am start -n com.hirahira.snowing/.debug.PerfControlActivity \
- *         --ez snow true --ef intensity 1.0 --ef speed 1.0 --ei layers 5 --ez bokeh true --es quality low
+ *         --ez snow true --es mood blizzard --ez bokeh true --es quality low
+ *
+ * `mood` takes a MoodChoice key. `override` with `layers`, `turbulence` and `gusts`
+ * replaces the mood's hidden parameters, `direction` sets the wind direction in degrees.
  *
  * Every extra is optional; only the ones given change. Guarded by the DUMP
  * permission, which adb shell holds and regular apps cannot get.
@@ -26,12 +30,12 @@ class PerfControlActivity : ComponentActivity() {
         lifecycleScope.launch {
             container.settingsRepository.update { current ->
                 current.copy(
-                    intensity = extras.floatOr(EXTRA_INTENSITY, current.intensity),
-                    speed = extras.floatOr(EXTRA_SPEED, current.speed),
+                    mood = MoodChoice.fromKey(extras.getString(EXTRA_MOOD)) ?: current.mood,
+                    windDirection = extras.floatOr(EXTRA_DIRECTION, current.windDirection),
                     lab = current.lab.copy(
+                        overrideMood = extras.booleanOr(EXTRA_OVERRIDE, current.lab.overrideMood),
                         layers = extras.intOr(EXTRA_LAYERS, current.lab.layers),
                         turbulence = extras.floatOr(EXTRA_TURBULENCE, current.lab.turbulence),
-                        wind = extras.floatOr(EXTRA_WIND, current.lab.wind),
                         gusts = extras.floatOr(EXTRA_GUSTS, current.lab.gusts),
                         showHud = extras.booleanOr(EXTRA_HUD, current.lab.showHud),
                         foreground = extras.booleanOr(EXTRA_BOKEH, current.lab.foreground),
@@ -60,11 +64,11 @@ class PerfControlActivity : ComponentActivity() {
 
     private companion object {
         const val EXTRA_SNOW = "snow"
-        const val EXTRA_INTENSITY = "intensity"
-        const val EXTRA_SPEED = "speed"
+        const val EXTRA_MOOD = "mood"
+        const val EXTRA_DIRECTION = "direction"
+        const val EXTRA_OVERRIDE = "override"
         const val EXTRA_LAYERS = "layers"
         const val EXTRA_TURBULENCE = "turbulence"
-        const val EXTRA_WIND = "wind"
         const val EXTRA_GUSTS = "gusts"
         const val EXTRA_HUD = "hud"
         const val EXTRA_BOKEH = "bokeh"

@@ -30,13 +30,22 @@ class DataStoreSnowSettingsRepository(
 
     private fun Preferences.toSettings(): SnowSettings {
         val defaults = SnowSettings()
+        val custom = defaults.customMood
         return SnowSettings(
-            intensity = this[Keys.INTENSITY] ?: defaults.intensity,
-            speed = this[Keys.SPEED] ?: defaults.speed,
+            mood = MoodChoice.fromKey(this[Keys.MOOD]) ?: defaults.mood,
+            customMood = BuiltInMoods.custom(
+                flakeSize = this[Keys.CUSTOM_SIZE]?.let { name -> FlakeSize.entries.firstOrNull { it.name == name } }
+                    ?: custom.flakeSize,
+                intensity = this[Keys.CUSTOM_INTENSITY] ?: custom.intensity,
+                speed = this[Keys.CUSTOM_SPEED] ?: custom.speed,
+                wind = this[Keys.CUSTOM_WIND] ?: custom.wind,
+            ),
+            windDirection = (this[Keys.WIND_DIRECTION] ?: defaults.windDirection)
+                .coerceIn(-SnowSettings.MAX_WIND_DIRECTION, SnowSettings.MAX_WIND_DIRECTION),
             lab = LabSettings(
+                overrideMood = this[Keys.LAB_OVERRIDE] ?: defaults.lab.overrideMood,
                 layers = this[Keys.LAB_LAYERS] ?: defaults.lab.layers,
                 turbulence = this[Keys.LAB_TURBULENCE] ?: defaults.lab.turbulence,
-                wind = this[Keys.LAB_WIND] ?: defaults.lab.wind,
                 gusts = this[Keys.LAB_GUSTS] ?: defaults.lab.gusts,
                 showHud = this[Keys.LAB_HUD] ?: defaults.lab.showHud,
                 showTracer = this[Keys.LAB_TRACER] ?: defaults.lab.showTracer,
@@ -49,12 +58,17 @@ class DataStoreSnowSettingsRepository(
         )
     }
 
+    // Only the custom mood's visible values are stored; its hidden ones come from code (ADR-0007).
     private fun MutablePreferences.write(settings: SnowSettings) {
-        this[Keys.INTENSITY] = settings.intensity
-        this[Keys.SPEED] = settings.speed
+        this[Keys.MOOD] = settings.mood.key
+        this[Keys.CUSTOM_SIZE] = settings.customMood.flakeSize.name
+        this[Keys.CUSTOM_INTENSITY] = settings.customMood.intensity
+        this[Keys.CUSTOM_SPEED] = settings.customMood.speed
+        this[Keys.CUSTOM_WIND] = settings.customMood.wind
+        this[Keys.WIND_DIRECTION] = settings.windDirection
+        this[Keys.LAB_OVERRIDE] = settings.lab.overrideMood
         this[Keys.LAB_LAYERS] = settings.lab.layers
         this[Keys.LAB_TURBULENCE] = settings.lab.turbulence
-        this[Keys.LAB_WIND] = settings.lab.wind
         this[Keys.LAB_GUSTS] = settings.lab.gusts
         this[Keys.LAB_HUD] = settings.lab.showHud
         this[Keys.LAB_TRACER] = settings.lab.showTracer
@@ -64,11 +78,15 @@ class DataStoreSnowSettingsRepository(
     }
 
     private object Keys {
-        val INTENSITY = floatPreferencesKey("intensity")
-        val SPEED = floatPreferencesKey("speed")
+        val MOOD = stringPreferencesKey("mood")
+        val CUSTOM_SIZE = stringPreferencesKey("custom_size")
+        val CUSTOM_INTENSITY = intPreferencesKey("custom_intensity")
+        val CUSTOM_SPEED = intPreferencesKey("custom_speed")
+        val CUSTOM_WIND = intPreferencesKey("custom_wind")
+        val WIND_DIRECTION = floatPreferencesKey("wind_direction")
+        val LAB_OVERRIDE = booleanPreferencesKey("lab_override")
         val LAB_LAYERS = intPreferencesKey("lab_layers")
         val LAB_TURBULENCE = floatPreferencesKey("lab_turbulence")
-        val LAB_WIND = floatPreferencesKey("lab_wind")
         val LAB_GUSTS = floatPreferencesKey("lab_gusts")
         val LAB_HUD = booleanPreferencesKey("lab_hud")
         val LAB_TRACER = booleanPreferencesKey("lab_tracer")

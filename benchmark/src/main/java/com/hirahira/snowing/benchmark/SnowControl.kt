@@ -2,11 +2,11 @@ package com.hirahira.snowing.benchmark
 
 import androidx.test.uiautomator.UiDevice
 
-/** The snow presets of docs/PERFORMANCE.md, with the same extras as docs/perf/measure.sh. */
+/** The snow presets of docs/PERFORMANCE.md: V1 is First Snow, V2 Blizzard, the heaviest built-in mood. */
 enum class SnowVariant(internal val extras: String) {
     V0("--ez snow false"),
-    V1("--ez snow true --ef intensity 0.45 --ef speed 0.4 --ei layers 3 --ef turbulence 0.5 --ef gusts 0.4 --ef wind 0"),
-    V2("--ez snow true --ef intensity 1.0 --ef speed 1.0 --ei layers 5 --ef turbulence 0.5 --ef gusts 0.4 --ef wind 0"),
+    V1("--ez snow true --es mood first_snow --ez override false"),
+    V2("--ez snow true --es mood blizzard --ez override false"),
 }
 
 /**
@@ -41,5 +41,5 @@ internal object SnowControl {
         device.executeShellCommand("am start -W -n $PACKAGE/.debug.PerfControlActivity $extras")
     }
 
-    private const val FILL_SCREEN_MS = 30_000L
+    private const val FILL_SCREEN_MS = 45_000L
 }

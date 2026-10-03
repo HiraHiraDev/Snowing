@@ -8,6 +8,8 @@ import com.hirahira.snowing.overlay.OverlayController
 import com.hirahira.snowing.overlay.ServiceOverlayController
 import com.hirahira.snowing.power.DataStoreSnowStateRepository
 import com.hirahira.snowing.power.SnowSwitch
+import com.hirahira.snowing.pro.Entitlements
+import com.hirahira.snowing.pro.UnlockedEntitlements
 import com.hirahira.snowing.settings.DataStoreSnowSettingsRepository
 import com.hirahira.snowing.settings.SnowSettingsRepository
 
@@ -27,6 +29,8 @@ class AppContainer(context: Context) {
     val overlayController: OverlayController = ServiceOverlayController(appContext)
 
     val deviceSignals: DeviceSignals = AndroidDeviceSignals(appContext)
+
+    val entitlements: Entitlements = UnlockedEntitlements()
 
     val snowSwitch = SnowSwitch(
         stateRepository = DataStoreSnowStateRepository(appContext.snowStateDataStore),

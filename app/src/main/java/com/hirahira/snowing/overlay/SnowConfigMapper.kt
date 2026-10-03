@@ -2,12 +2,15 @@ package com.hirahira.snowing.overlay
 
 import com.hirahira.snowing.engine.QualityLevel
 import com.hirahira.snowing.engine.SnowConfig
+import com.hirahira.snowing.settings.FlakeSize
 import com.hirahira.snowing.settings.LabQuality
+import com.hirahira.snowing.settings.Mood
 import com.hirahira.snowing.settings.SnowSettings
+import kotlin.math.sin
 
 /**
- * The single place where the look of the snow is tuned: slider positions
- * (0..1) map linearly onto these physical ranges.
+ * The single place where the look of the snow is tuned: mood levels and
+ * lab sliders map linearly onto these physical ranges (ADR-0007).
  */
 object SnowTuning {
     /** Flakes per 10 000 dp². */
@@ -19,8 +22,15 @@ object SnowTuning {
     /** Flake radius from the farthest to the closest layer, dp. */
     val RadiusRange = 1.2f..4.2f
 
-    /** Strongest mean wind either way, dp/s (lab slider -1..1). */
+    /** Mean wind at the strongest mood level, dp/s, before the direction takes its share. */
     const val WIND_MAX_DP_PER_S = 60f
+
+    /** Flake radius multiplier per mood size class. */
+    fun sizeFactor(size: FlakeSize): Float = when (size) {
+        FlakeSize.S -> 0.75f
+        FlakeSize.M -> 1f
+        FlakeSize.L -> 1.35f
+    }
 
     /** Gust strength, dp/s. */
     val GustsRange = 0f..45f
@@ -76,18 +86,30 @@ object SnowConfigMapper {
         LabQuality.SAVER -> QualityLevel.SAVER
     }
 
-    fun toConfig(settings: SnowSettings): SnowConfig = SnowConfig(
-        density = SnowTuning.DensityRange.at(settings.intensity),
-        fallSpeed = SnowTuning.SpeedRange.at(settings.speed),
-        minRadius = SnowTuning.RadiusRange.start,
-        maxRadius = SnowTuning.RadiusRange.endInclusive,
-        layers = settings.lab.layers.coerceAtLeast(1),
-        wind = settings.lab.wind.coerceIn(-1f, 1f) * SnowTuning.WIND_MAX_DP_PER_S,
-        gusts = SnowTuning.GustsRange.at(settings.lab.gusts),
-        turbulence = SnowTuning.TurbulenceRange.at(settings.lab.turbulence),
-        flutter = SnowTuning.FlutterRange.at(settings.lab.turbulence),
-        opacity = SnowTuning.OPACITY,
-    )
+    /** The active mood with the global wind direction; the lab may replace the mood's hidden parameters. */
+    fun toConfig(settings: SnowSettings): SnowConfig {
+        val mood = settings.activeMood
+        val lab = settings.lab
+        val layers = if (lab.overrideMood) lab.layers else mood.layers
+        val turbulence = if (lab.overrideMood) lab.turbulence else mood.turbulence
+        val gusts = if (lab.overrideMood) lab.gusts else mood.gusts
+        val size = SnowTuning.sizeFactor(mood.flakeSize)
+        // The wheel tilts the wind; snow always falls down (ADR-0006), so only the sideways part counts.
+        val direction = settings.windDirection.coerceIn(-SnowSettings.MAX_WIND_DIRECTION, SnowSettings.MAX_WIND_DIRECTION)
+        val windStrength = SnowTuning.WIND_MAX_DP_PER_S * mood.wind.fractionOf(Mood.WIND_LEVELS)
+        return SnowConfig(
+            density = SnowTuning.DensityRange.at(mood.intensity.fractionOf(Mood.LEVELS)),
+            fallSpeed = SnowTuning.SpeedRange.at(mood.speed.fractionOf(Mood.LEVELS)),
+            minRadius = SnowTuning.RadiusRange.start * size,
+            maxRadius = SnowTuning.RadiusRange.endInclusive * size,
+            layers = layers.coerceAtLeast(1),
+            wind = windStrength * sin(Math.toRadians(direction.toDouble())).toFloat(),
+            gusts = SnowTuning.GustsRange.at(gusts),
+            turbulence = SnowTuning.TurbulenceRange.at(turbulence),
+            flutter = SnowTuning.FlutterRange.at(turbulence),
+            opacity = SnowTuning.OPACITY,
+        )
+    }
 
     // Density 0 when disabled, so switching bokeh off lets the last ones fall out (ADR-0006).
     private fun foregroundFor(snow: SnowConfig, enabled: Boolean): SnowConfig = SnowConfig(
@@ -108,6 +130,9 @@ object SnowConfigMapper {
         showHud = settings.lab.showHud,
         showTracer = settings.lab.showTracer,
     )
+
+    private fun Int.fractionOf(levels: IntRange): Float =
+        (coerceIn(levels) - levels.first).toFloat() / (levels.last - levels.first)
 
     private fun ClosedFloatingPointRange<Float>.at(fraction: Float): Float =
         start + (endInclusive - start) * fraction.coerceIn(0f, 1f)

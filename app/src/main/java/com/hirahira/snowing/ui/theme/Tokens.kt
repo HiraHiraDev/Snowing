@@ -18,6 +18,8 @@ data class SnowingColors(
     val background: Color,
     val surface: Color,
     val surfaceRaised: Color,
+    /** The unfilled part of indicators and tracks. */
+    val track: Color,
     val primary: Color,
     val onPrimary: Color,
     val content: Color,
@@ -38,12 +40,16 @@ data class SnowingSpacing(
 @Immutable
 data class SnowingSizes(
     val primaryButtonHeight: Dp = 56.dp,
+    val levelMarkWidth: Dp = 5.dp,
+    val levelMarkHeight: Dp = 14.dp,
+    val levelMarkGap: Dp = 3.dp,
 )
 
 @Immutable
 data class SnowingShapes(
     val card: Shape = RoundedCornerShape(20.dp),
     val control: Shape = RoundedCornerShape(14.dp),
+    val levelMark: Shape = RoundedCornerShape(2.dp),
 )
 
 @Immutable

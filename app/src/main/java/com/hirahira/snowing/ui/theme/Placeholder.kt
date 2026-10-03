@@ -12,6 +12,7 @@ internal val PlaceholderNightColors = SnowingColors(
     background = Color(0xFF0B1020),
     surface = Color(0xFF151B2E),
     surfaceRaised = Color(0xFF1E2640),
+    track = Color(0xFF39425E),
     primary = Color(0xFFDCE8FF),
     onPrimary = Color(0xFF0B1020),
     content = Color(0xFFF2F5FF),

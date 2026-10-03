@@ -2,6 +2,7 @@ package com.hirahira.snowing.testing
 
 import com.hirahira.snowing.overlay.OverlayController
 import com.hirahira.snowing.power.SnowStateRepository
+import com.hirahira.snowing.pro.Entitlements
 import com.hirahira.snowing.settings.SnowSettings
 import com.hirahira.snowing.settings.SnowSettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,4 +44,8 @@ class FakeOverlayController(var permission: Boolean = true) : OverlayController 
     override fun stop() {
         isRunning.value = false
     }
+}
+
+class FakeEntitlements(hasPro: Boolean = true) : Entitlements {
+    override val hasPro = MutableStateFlow(hasPro)
 }
