@@ -26,6 +26,16 @@ android {
                 "proguard-rules.pro",
             )
         }
+        // Release code (R8, not debuggable) that profilers and Macrobenchmark can attach to.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    sourceSets {
+        // Performance runs drive the snow over adb (PerfControlActivity), like on debug.
+        getByName("benchmark").kotlin.srcDir("src/debug/java")
     }
 
     compileOptions {
