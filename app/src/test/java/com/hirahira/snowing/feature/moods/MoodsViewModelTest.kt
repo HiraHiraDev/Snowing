@@ -4,6 +4,7 @@ import com.hirahira.snowing.settings.BuiltInMoods
 import com.hirahira.snowing.settings.FlakeSize
 import com.hirahira.snowing.settings.Mood
 import com.hirahira.snowing.settings.MoodChoice
+import com.hirahira.snowing.settings.SettingsEditor
 import com.hirahira.snowing.settings.SnowSettings
 import com.hirahira.snowing.settings.SnowSettingsRepository
 import com.hirahira.snowing.settings.TimeOfDay
@@ -23,7 +24,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -44,8 +44,7 @@ class MoodsViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel(labEnabled: Boolean = false) =
-        MoodsViewModel(settings, entitlements, labEnabled)
+    private fun viewModel() = MoodsViewModel(settings, entitlements)
 
     private fun TestScope.collect(vm: MoodsViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
@@ -168,15 +167,13 @@ class MoodsViewModelTest {
     }
 
     @Test
-    fun `slider changes are persisted after the throttle`() = runTest(main) {
+    fun `dragged changes are persisted after the throttle`() = runTest(main) {
         settings.state.value = ownActive
-        val vm = viewModel(labEnabled = true)
+        val vm = viewModel()
         vm.onEvent(MoodsEvent.IntensityChanged(9))
-        vm.onEvent(MoodsEvent.LayersChanged(5))
-        advanceTimeBy(MoodsViewModel.SAVE_THROTTLE_MS + 1)
+        advanceTimeBy(SettingsEditor.THROTTLE_MS + 1)
 
         assertEquals(9, settings.state.value.activeMood.intensity)
-        assertEquals(5, settings.state.value.lab.layers)
     }
 
     @Test
@@ -192,7 +189,7 @@ class MoodsViewModelTest {
             advanceTimeBy(16)
         }
 
-        val maxWrites = (60 * 16 / MoodsViewModel.SAVE_THROTTLE_MS + 1).toInt()
+        val maxWrites = (60 * 16 / SettingsEditor.THROTTLE_MS + 1).toInt()
         assertTrue("wrote ${settings.writes} times", settings.writes <= maxWrites)
     }
 
@@ -211,53 +208,16 @@ class MoodsViewModelTest {
     }
 
     @Test
-    fun `switches are written at once`() = runTest(main) {
-        val vm = viewModel(labEnabled = true)
-        collect(vm)
-        vm.onEvent(MoodsEvent.HudToggled(true))
-        vm.onEvent(MoodsEvent.MoodOverrideToggled(true))
-
-        assertTrue(settings.state.value.lab.showHud)
-        assertTrue(settings.state.value.lab.overrideMood)
-    }
-
-    @Test
-    fun `without the override the lab shows the active mood's hidden parameters`() = runTest(main) {
-        settings.state.value = SnowSettings(mood = MoodChoice.BLIZZARD)
-        val vm = viewModel(labEnabled = true)
-        collect(vm)
-
-        val lab = vm.uiState.value.lab!!
-        assertEquals(BuiltInMoods.BLIZZARD.speed, lab.speed)
-        assertEquals(BuiltInMoods.BLIZZARD.layers, lab.layers)
-        assertEquals(BuiltInMoods.BLIZZARD.turbulence, lab.turbulence)
-        assertEquals(BuiltInMoods.BLIZZARD.gusts, lab.gusts)
-    }
-
-    @Test
-    fun `turning the override on starts from the active mood`() = runTest(main) {
-        settings.state.value = SnowSettings(mood = MoodChoice.HEAVY)
-        val vm = viewModel(labEnabled = true)
-        collect(vm)
-        vm.onEvent(MoodsEvent.MoodOverrideToggled(true))
-
-        val lab = settings.state.value.lab
-        assertEquals(BuiltInMoods.HEAVY.speed, lab.speed)
-        assertEquals(BuiltInMoods.HEAVY.layers, lab.layers)
-        assertEquals(BuiltInMoods.HEAVY.turbulence, lab.turbulence)
-        assertEquals(BuiltInMoods.HEAVY.gusts, lab.gusts)
-    }
-
-    @Test
     fun `an outside change shows once no edit is pending`() = runTest(main) {
-        val vm = viewModel(labEnabled = true)
+        settings.state.value = ownActive
+        val vm = viewModel()
         collect(vm)
-        vm.onEvent(MoodsEvent.TurbulenceChanged(0.2f))
+        vm.onEvent(MoodsEvent.IntensityChanged(4))
         vm.onEvent(MoodsEvent.DragFinished)
 
         settings.state.value = settings.state.value.copy(mood = MoodChoice.BLIZZARD) // e.g. a tile or the schedule
         assertEquals(MoodChoice.BLIZZARD, vm.uiState.value.moods.single { it.selected }.choice)
-        assertEquals(0.2f, settings.state.value.lab.turbulence)
+        assertEquals(4, settings.state.value.customMood!!.intensity)
     }
 
     @Test
@@ -266,21 +226,10 @@ class MoodsViewModelTest {
             override val settings = MutableSharedFlow<SnowSettings>()
             override suspend fun update(transform: (SnowSettings) -> SnowSettings) = Unit
         }
-        val vm = MoodsViewModel(neverLoads, entitlements, labEnabled = false)
+        val vm = MoodsViewModel(neverLoads, entitlements)
         collect(vm)
 
         assertFalse(vm.uiState.value.loaded)
         assertTrue(vm.uiState.value.moods.isEmpty())
-    }
-
-    @Test
-    fun `lab is hidden unless enabled`() = runTest {
-        val hidden = viewModel(labEnabled = false)
-        val shown = viewModel(labEnabled = true)
-        collect(hidden)
-        collect(shown)
-
-        assertNull(hidden.uiState.value.lab)
-        assertNotNull(shown.uiState.value.lab)
     }
 }

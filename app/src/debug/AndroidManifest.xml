@@ -10,5 +10,17 @@
             android:permission="android.permission.DUMP"
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- Opened from the app itself (long-press the Moods tab), never from outside. -->
+        <activity
+            android:name=".debug.lab.LabActivity"
+            android:exported="false"
+            android:label="@string/lab_title"
+            android:theme="@style/Theme.Snowing">
+            <intent-filter>
+                <action android:name="com.hirahira.snowing.action.OPEN_LAB" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

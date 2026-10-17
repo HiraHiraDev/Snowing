@@ -28,13 +28,14 @@ import com.hirahira.snowing.ui.theme.SnowingTheme
 
 /**
  * A page's scrolling content: screen margins, groups set apart by space (design 6a has no
- * cards), and starting [top] below the status bar. Content scrolled up under the page tabs
- * fades out instead of running into them.
+ * cards), and starting [top] below the status bar. On a page under the tabs ([underTabs]),
+ * content scrolled up fades out instead of running into them.
  */
 @Composable
 fun ScrollingPage(
     top: Dp,
     modifier: Modifier = Modifier,
+    underTabs: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val spacing = SnowingTheme.spacing
@@ -42,7 +43,13 @@ fun ScrollingPage(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .fadeOutAbove(start = statusBar + spacing.underTabsFadeStart, length = SnowingTheme.sizes.underTabsFade)
+            .then(
+                if (underTabs) {
+                    Modifier.fadeOutAbove(start = statusBar + spacing.underTabsFadeStart, length = SnowingTheme.sizes.underTabsFade)
+                } else {
+                    Modifier
+                },
+            )
             .verticalScroll(rememberScrollState())
             .pagePadding(top),
         verticalArrangement = Arrangement.spacedBy(spacing.group),

@@ -35,6 +35,7 @@ enum class HomePage { STATS, SNOW, MOODS }
 fun HomeScreen(
     state: HomeUiState,
     modifier: Modifier = Modifier,
+    onPageLongPress: ((HomePage) -> Unit)? = null,
     page: @Composable (HomePage) -> Unit,
 ) {
     val pages = HomePage.entries
@@ -65,6 +66,7 @@ fun HomeScreen(
                 titles = pages.map { stringResource(it.titleRes()) },
                 selectedIndex = pagerState.currentPage,
                 onSelect = { scope.launch { pagerState.animateScrollToPage(it) } },
+                onLongPress = onPageLongPress?.let { { index -> it(pages[index]) } },
                 modifier = Modifier
                     .statusBarsPadding()
                     .padding(top = SnowingTheme.spacing.tabsTop)

@@ -17,8 +17,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.hirahira.snowing.R
 import com.hirahira.snowing.feature.common.displayName
 import com.hirahira.snowing.settings.FlakeSize
-import com.hirahira.snowing.settings.LabQuality
-import com.hirahira.snowing.settings.LabSettings
 import com.hirahira.snowing.settings.Mood
 import com.hirahira.snowing.settings.MoodChoice
 import com.hirahira.snowing.settings.TimeOfDay
@@ -28,7 +26,6 @@ import com.hirahira.snowing.ui.components.ChoiceList
 import com.hirahira.snowing.ui.components.ControlLabel
 import com.hirahira.snowing.ui.components.DirectionArrow
 import com.hirahira.snowing.ui.components.DotPicker
-import com.hirahira.snowing.ui.components.Group
 import com.hirahira.snowing.ui.components.LargeValue
 import com.hirahira.snowing.ui.components.LevelRuler
 import com.hirahira.snowing.ui.components.enabledLook
@@ -36,19 +33,14 @@ import com.hirahira.snowing.ui.components.Note
 import com.hirahira.snowing.ui.components.OptionPicker
 import com.hirahira.snowing.ui.components.ScrollingPage
 import com.hirahira.snowing.ui.components.SectionTitle
-import com.hirahira.snowing.ui.components.SettingSlider
-import com.hirahira.snowing.ui.components.SettingSwitch
-import com.hirahira.snowing.ui.components.StepSlider
 import com.hirahira.snowing.ui.components.TextAction
 import com.hirahira.snowing.ui.components.WindDial
 import com.hirahira.snowing.ui.theme.Sky
 import com.hirahira.snowing.ui.theme.SnowingColors
 import com.hirahira.snowing.ui.theme.SnowingTheme
-import kotlin.math.roundToInt
 
 /**
- * The Moods page (design 6a): pick a mood, adjust it (Pro), choose the time of day.
- * The prototype lab follows in debug builds until it gets its own screen.
+ * The Moods page (design 6a): pick a mood, shape your own (Pro), choose the time of day.
  */
 @Composable
 fun MoodsScreen(
@@ -74,7 +66,6 @@ fun MoodsScreen(
                 optionLabel = { it.displayName() },
                 onSelect = { onEvent(MoodsEvent.TimeOfDayChanged(it)) },
             )
-            state.lab?.let { LabGroup(it, onEvent) }
         }
     }
 }
@@ -161,81 +152,6 @@ private fun OwnMoodControls(own: OwnMoodUiState.Editing, onEvent: (MoodsEvent) -
         modifier = Modifier.padding(top = spacing.l),
     )
 }
-
-@Composable
-private fun LabGroup(lab: LabUiState, onEvent: (MoodsEvent) -> Unit) {
-    val released = { onEvent(MoodsEvent.DragFinished) }
-    Group {
-        SectionTitle(stringResource(R.string.lab_title))
-        Caption(stringResource(R.string.lab_hint))
-        SettingSwitch(
-            label = stringResource(R.string.lab_override_mood),
-            checked = lab.overrideMood,
-            onCheckedChange = { onEvent(MoodsEvent.MoodOverrideToggled(it)) },
-        )
-        StepSlider(
-            label = stringResource(R.string.lab_speed),
-            value = lab.speed,
-            range = Mood.LEVELS,
-            enabled = lab.overrideMood,
-            onValueChange = { onEvent(MoodsEvent.SpeedChanged(it)) },
-            onValueChangeFinished = released,
-        )
-        StepSlider(
-            label = stringResource(R.string.lab_layers),
-            value = lab.layers,
-            range = LabSettings.LAYERS,
-            enabled = lab.overrideMood,
-            onValueChange = { onEvent(MoodsEvent.LayersChanged(it)) },
-            onValueChangeFinished = released,
-        )
-        SettingSlider(
-            label = stringResource(R.string.lab_turbulence),
-            value = lab.turbulence,
-            valueText = lab.turbulence.asPercent(),
-            enabled = lab.overrideMood,
-            onValueChange = { onEvent(MoodsEvent.TurbulenceChanged(it)) },
-            onValueChangeFinished = released,
-        )
-        SettingSlider(
-            label = stringResource(R.string.lab_gusts),
-            value = lab.gusts,
-            valueText = lab.gusts.asPercent(),
-            enabled = lab.overrideMood,
-            onValueChange = { onEvent(MoodsEvent.GustsChanged(it)) },
-            onValueChangeFinished = released,
-        )
-        OptionPicker(
-            label = stringResource(R.string.lab_quality),
-            options = LabQuality.entries,
-            selected = lab.quality,
-            optionLabel = { it.name.lowercase() },
-            onSelect = { onEvent(MoodsEvent.QualityChanged(it)) },
-        )
-        SettingSwitch(
-            label = stringResource(R.string.lab_hud),
-            checked = lab.showHud,
-            onCheckedChange = { onEvent(MoodsEvent.HudToggled(it)) },
-        )
-        SettingSwitch(
-            label = stringResource(R.string.lab_tracer),
-            checked = lab.showTracer,
-            onCheckedChange = { onEvent(MoodsEvent.TracerToggled(it)) },
-        )
-        SettingSwitch(
-            label = stringResource(R.string.lab_foreground),
-            checked = lab.foreground,
-            onCheckedChange = { onEvent(MoodsEvent.ForegroundToggled(it)) },
-        )
-        SettingSwitch(
-            label = stringResource(R.string.lab_instant),
-            checked = lab.instantChanges,
-            onCheckedChange = { onEvent(MoodsEvent.InstantChangesToggled(it)) },
-        )
-    }
-}
-
-private fun Float.asPercent(): String = "${(this * 100).roundToInt()}%"
 
 private val previewMoods = MoodChoice.entries.map { MoodItem(it, selected = it == MoodChoice.CUSTOM) }
 

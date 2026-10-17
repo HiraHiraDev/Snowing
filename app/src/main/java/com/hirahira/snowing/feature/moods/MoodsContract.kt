@@ -1,7 +1,6 @@
 package com.hirahira.snowing.feature.moods
 
 import com.hirahira.snowing.settings.FlakeSize
-import com.hirahira.snowing.settings.LabQuality
 import com.hirahira.snowing.settings.MoodChoice
 import com.hirahira.snowing.settings.TimeOfDay
 import com.hirahira.snowing.settings.WindStrength
@@ -13,8 +12,6 @@ data class MoodsUiState(
     val moods: List<MoodItem> = emptyList(),
     val ownMood: OwnMoodUiState = OwnMoodUiState.Hidden,
     val timeOfDay: TimeOfDay = TimeOfDay.AUTO,
-    /** Null hides the prototype lab (release builds). */
-    val lab: LabUiState? = null,
 )
 
 data class MoodItem(
@@ -44,19 +41,6 @@ sealed interface OwnMoodUiState {
     data object Hidden : OwnMoodUiState
 }
 
-data class LabUiState(
-    val overrideMood: Boolean,
-    val speed: Int,
-    val layers: Int,
-    val turbulence: Float,
-    val gusts: Float,
-    val showHud: Boolean,
-    val showTracer: Boolean,
-    val foreground: Boolean,
-    val instantChanges: Boolean,
-    val quality: LabQuality,
-)
-
 sealed interface MoodsEvent {
     data class MoodSelected(val choice: MoodChoice) : MoodsEvent
     /** Copies the active mood into the user's own and makes it active. */
@@ -67,16 +51,6 @@ sealed interface MoodsEvent {
     data class WindAngleChanged(val value: Int) : MoodsEvent
     data class WindStrengthChanged(val value: WindStrength) : MoodsEvent
     data class TimeOfDayChanged(val value: TimeOfDay) : MoodsEvent
-    data class MoodOverrideToggled(val enabled: Boolean) : MoodsEvent
-    data class SpeedChanged(val value: Int) : MoodsEvent
-    data class LayersChanged(val value: Int) : MoodsEvent
-    data class TurbulenceChanged(val value: Float) : MoodsEvent
-    data class GustsChanged(val value: Float) : MoodsEvent
-    data class QualityChanged(val value: LabQuality) : MoodsEvent
-    /** The finger left a ruler, dial or slider: write the final value now. */
+    /** The finger left the ruler or the dial: write the final value now. */
     data object DragFinished : MoodsEvent
-    data class HudToggled(val enabled: Boolean) : MoodsEvent
-    data class TracerToggled(val enabled: Boolean) : MoodsEvent
-    data class ForegroundToggled(val enabled: Boolean) : MoodsEvent
-    data class InstantChangesToggled(val enabled: Boolean) : MoodsEvent
 }
