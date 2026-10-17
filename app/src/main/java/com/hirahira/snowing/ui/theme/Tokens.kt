@@ -182,7 +182,7 @@ data class SnowingShapes(
 )
 
 /**
- * Text roles of design 6a. Literata for names and numbers, Manrope for UI.
+ * Text roles of design 6a. Literata for names and numbers, Hanken Grotesk for UI.
  * [eyebrow] and [micro] are meant to be shown in upper case.
  */
 @Immutable

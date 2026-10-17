@@ -15,7 +15,8 @@ import androidx.compose.ui.unit.sp
 import com.hirahira.snowing.R
 
 // Fonts are bundled, cut down by docs/fonts/make-fonts.sh (ADR-0010): Literata pinned to
-// weight 500 with its optical size axis kept, Manrope 500-700.
+// weight 500 with its optical size axis kept, Hanken Grotesk 500-700 for the UI (owner's
+// choice over the design's Manrope).
 
 /**
  * Literata cut for one text size, as a browser does with `font-optical-sizing: auto`:
@@ -30,16 +31,16 @@ private fun literata(size: TextUnit, italic: Boolean = false) = FontFamily(
     ),
 )
 
-private fun manrope(weight: FontWeight) = Font(
-    resId = R.font.manrope,
+private fun hanken(weight: FontWeight) = Font(
+    resId = R.font.hanken,
     weight = weight,
     variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
 )
 
-private val Manrope = FontFamily(
-    manrope(FontWeight.Medium),
-    manrope(FontWeight.SemiBold),
-    manrope(FontWeight.Bold),
+private val HankenGrotesk = FontFamily(
+    hanken(FontWeight.Medium),
+    hanken(FontWeight.SemiBold),
+    hanken(FontWeight.Bold),
 )
 
 // Leading split evenly above and below, like CSS line-height.
@@ -58,7 +59,7 @@ private fun serif(size: TextUnit, lineHeight: TextUnit = TextUnit.Unspecified, t
     )
 
 private fun sans(size: TextUnit, weight: FontWeight, tracking: TextUnit = 0.em) = Base.copy(
-    fontFamily = Manrope,
+    fontFamily = HankenGrotesk,
     fontWeight = weight,
     fontSize = size,
     letterSpacing = tracking,
