@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tab_stats">Statystyki</string>
+    <string name="tab_snow">Śnieg</string>
+    <string name="tab_moods">Nastroje</string>
+
     <string name="control_start">Niech pada</string>
     <string name="control_stop">Zatrzymaj śnieg</string>
     <string name="control_intensity">Intensywność</string>
-    <string name="control_speed">Prędkość</string>
     <string name="control_wind">Wiatr</string>
 
     <string name="mood_section">Nastrój</string>
@@ -13,7 +16,23 @@
     <string name="mood_blizzard">Zamieć</string>
     <string name="mood_custom">Własny</string>
     <string name="mood_intensity_description">Intensywność %1$d z %2$d</string>
-    <string name="custom_flake_size">Wielkość płatków</string>
+    <string name="flake_size">Wielkość płatków</string>
+    <string name="adjust">Dostosuj</string>
+    <string name="adjust_applies_to">zmiany dotyczą nastroju %1$s</string>
+    <string name="adjust_edited">%1$s · zmieniony</string>
+    <string name="adjust_locked">Dostosowanie nastrojów jest w wersji Pro</string>
+    <string name="adjust_restore">Przywróć</string>
+    <string name="adjust_save_new">Zapisz jako nowy</string>
+    <string name="wind_strength">Siła wiatru</string>
+    <string name="wind_calm">Cisza</string>
+    <string name="wind_gentle">Łagodny</string>
+    <string name="wind_gusty">Porywisty</string>
+    <string name="time_of_day">Pora dnia</string>
+    <string name="tod_auto">Auto</string>
+    <string name="tod_dawn">Świt</string>
+    <string name="tod_day">Dzień</string>
+    <string name="tod_dusk">Zmierzch</string>
+    <string name="tod_night">Noc</string>
 
     <string name="permission_title">Pozwól Snowing wyświetlać się nad innymi aplikacjami</string>
     <string name="permission_body">Śnieg pada nad wszystkim, czego używasz. Android wymaga jednorazowej zgody w ustawieniach systemu.</string>

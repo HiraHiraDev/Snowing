@@ -2,6 +2,8 @@ package com.hirahira.snowing
 
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
+import com.hirahira.snowing.clock.SystemWallClock
+import com.hirahira.snowing.clock.WallClock
 import com.hirahira.snowing.overlay.AndroidDeviceSignals
 import com.hirahira.snowing.overlay.DeviceSignals
 import com.hirahira.snowing.overlay.OverlayController
@@ -31,6 +33,8 @@ class AppContainer(context: Context) {
     val deviceSignals: DeviceSignals = AndroidDeviceSignals(appContext)
 
     val entitlements: Entitlements = UnlockedEntitlements()
+
+    val wallClock: WallClock = SystemWallClock()
 
     val snowSwitch = SnowSwitch(
         stateRepository = DataStoreSnowStateRepository(appContext.snowStateDataStore),

@@ -1,34 +1,36 @@
 package com.hirahira.snowing.feature.control
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.hirahira.snowing.R
+import com.hirahira.snowing.feature.common.displayName
 import com.hirahira.snowing.settings.FlakeSize
 import com.hirahira.snowing.settings.LabQuality
+import com.hirahira.snowing.settings.LabSettings
 import com.hirahira.snowing.settings.Mood
 import com.hirahira.snowing.settings.MoodChoice
-import com.hirahira.snowing.settings.SnowSettings
+import com.hirahira.snowing.settings.TimeOfDay
+import com.hirahira.snowing.settings.WindStrength
+import com.hirahira.snowing.ui.components.Caption
+import com.hirahira.snowing.ui.components.ChoiceList
+import com.hirahira.snowing.ui.components.Group
 import com.hirahira.snowing.ui.components.LevelIndicator
-import com.hirahira.snowing.ui.components.NoticeCard
+import com.hirahira.snowing.ui.components.Notice
+import com.hirahira.snowing.ui.components.OptionPicker
 import com.hirahira.snowing.ui.components.PrimaryButton
+import com.hirahira.snowing.ui.components.Scrim
+import com.hirahira.snowing.ui.components.ScrollingPage
 import com.hirahira.snowing.ui.components.SectionTitle
-import com.hirahira.snowing.ui.components.SegmentedChoice
-import com.hirahira.snowing.ui.components.SelectableRow
 import com.hirahira.snowing.ui.components.SettingSlider
 import com.hirahira.snowing.ui.components.SettingSwitch
-import com.hirahira.snowing.ui.components.SnowingCard
+import com.hirahira.snowing.ui.components.StepSlider
+import com.hirahira.snowing.ui.components.TextAction
 import com.hirahira.snowing.ui.theme.SnowingTheme
 import kotlin.math.roundToInt
 
@@ -39,165 +41,145 @@ fun ControlScreen(
     onGrantOverlayPermission: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val spacing = SnowingTheme.spacing
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = SnowingTheme.colors.background,
-        contentColor = SnowingTheme.colors.content,
-    ) {
-        Column(
-            modifier = Modifier
-                .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = spacing.m, vertical = spacing.l),
-            verticalArrangement = Arrangement.spacedBy(spacing.m),
-        ) {
-            Text(text = stringResource(R.string.app_name), style = SnowingTheme.typography.display)
-
+    Box(modifier.fillMaxSize()) {
+        // Prototype controls are long and cross the light drift; the scrim keeps them legible.
+        Scrim(Modifier.fillMaxSize())
+        // Nothing that depends on stored state shows before it loads (B-008).
+        if (!state.loaded) return@Box
+        ScrollingPage(top = SnowingTheme.spacing.pageTopSnow) {
             if (!state.hasOverlayPermission) {
-                NoticeCard(
+                Notice(
                     title = stringResource(R.string.permission_title),
                     body = stringResource(R.string.permission_body),
                     actionLabel = stringResource(R.string.permission_action),
                     onAction = onGrantOverlayPermission,
                 )
             }
-
             PrimaryButton(
                 text = stringResource(if (state.snowEnabled) R.string.control_stop else R.string.control_start),
                 onClick = { onEvent(ControlEvent.ToggleSnow) },
                 enabled = state.canToggle,
             )
-
-            MoodCard(state, onEvent)
-
-            state.customMood?.let { CustomMoodCard(it, onEvent) }
-
-            state.lab?.let { LabCard(it, onEvent) }
+            MoodGroup(state.moods, onEvent)
+            state.adjust?.let { AdjustGroup(it, onEvent) }
+            OptionPicker(
+                label = stringResource(R.string.time_of_day),
+                options = TimeOfDay.entries,
+                selected = state.timeOfDay,
+                optionLabel = { it.displayName() },
+                onSelect = { onEvent(ControlEvent.TimeOfDayChanged(it)) },
+            )
+            state.lab?.let { LabGroup(it, onEvent) }
         }
     }
 }
 
 @Composable
-private fun MoodCard(state: ControlUiState, onEvent: (ControlEvent) -> Unit) {
-    SnowingCard {
+private fun MoodGroup(moods: List<MoodItem>, onEvent: (ControlEvent) -> Unit) {
+    Group {
         SectionTitle(stringResource(R.string.mood_section))
-        Column(Modifier.selectableGroup()) {
-            for (item in state.moods) {
-                SelectableRow(
-                    title = stringResource(item.choice.nameRes()),
-                    selected = item.selected,
-                    onClick = { onEvent(ControlEvent.MoodSelected(item.choice)) },
-                ) {
-                    LevelIndicator(
-                        level = item.intensity,
-                        max = Mood.LEVELS.last,
-                        contentDescription = stringResource(R.string.mood_intensity_description, item.intensity, Mood.LEVELS.last),
-                    )
-                }
+        ChoiceList(
+            items = moods,
+            isSelected = { it.selected },
+            title = { it.choice.displayName() },
+            onSelect = { onEvent(ControlEvent.MoodSelected(it.choice)) },
+        ) { item ->
+            LevelIndicator(
+                level = item.intensity,
+                max = Mood.LEVELS.last,
+                contentDescription = stringResource(R.string.mood_intensity_description, item.intensity, Mood.LEVELS.last),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AdjustGroup(adjust: AdjustUiState, onEvent: (ControlEvent) -> Unit) {
+    val moodName = adjust.mood.displayName()
+    val enabled = !adjust.locked
+    val released = { onEvent(ControlEvent.SliderReleased) }
+    Group {
+        SectionTitle(stringResource(R.string.adjust))
+        Caption(
+            when {
+                adjust.locked -> stringResource(R.string.adjust_locked)
+                adjust.edited -> stringResource(R.string.adjust_edited, moodName)
+                else -> stringResource(R.string.adjust_applies_to, moodName)
+            },
+        )
+        if (adjust.edited) {
+            Row(horizontalArrangement = Arrangement.spacedBy(SnowingTheme.spacing.xl)) {
+                TextAction(stringResource(R.string.adjust_restore), onClick = { onEvent(ControlEvent.RestoreMood) })
+                TextAction(
+                    stringResource(R.string.adjust_save_new),
+                    onClick = { onEvent(ControlEvent.SaveMoodAsNew) },
+                    primary = true,
+                )
             }
         }
-    }
-}
-
-@Composable
-private fun CustomMoodCard(custom: CustomMoodUiState, onEvent: (ControlEvent) -> Unit) {
-    SnowingCard {
-        SectionTitle(stringResource(R.string.mood_custom))
-        SegmentedChoice(
-            label = stringResource(R.string.custom_flake_size),
-            options = FlakeSize.entries.map { stringResource(it.labelRes()) },
-            selectedIndex = custom.flakeSize.ordinal,
-            onSelect = { onEvent(ControlEvent.CustomFlakeSizeChanged(FlakeSize.entries[it])) },
-        )
-        LevelSlider(
+        StepSlider(
             label = stringResource(R.string.control_intensity),
-            value = custom.intensity,
-            levels = Mood.LEVELS,
-            onValueChange = { onEvent(ControlEvent.CustomIntensityChanged(it)) },
-            onEvent = onEvent,
+            value = adjust.intensity,
+            range = Mood.LEVELS,
+            enabled = enabled,
+            onValueChange = { onEvent(ControlEvent.IntensityChanged(it)) },
+            onValueChangeFinished = released,
         )
-        LevelSlider(
-            label = stringResource(R.string.control_speed),
-            value = custom.speed,
-            levels = Mood.LEVELS,
-            onValueChange = { onEvent(ControlEvent.CustomSpeedChanged(it)) },
-            onEvent = onEvent,
+        OptionPicker(
+            label = stringResource(R.string.flake_size),
+            options = FlakeSize.entries,
+            selected = adjust.flakeSize,
+            optionLabel = { it.displayName() },
+            enabled = enabled,
+            onSelect = { onEvent(ControlEvent.FlakeSizeChanged(it)) },
         )
-        LevelSlider(
+        // A plain slider until the wind wheel of design 6a.
+        StepSlider(
             label = stringResource(R.string.control_wind),
-            value = custom.wind,
-            levels = Mood.WIND_LEVELS,
-            onValueChange = { onEvent(ControlEvent.CustomWindChanged(it)) },
-            onEvent = onEvent,
+            value = adjust.windAngle,
+            range = Mood.WIND_ANGLES,
+            valueText = stringResource(R.string.degrees, adjust.windAngle),
+            enabled = enabled,
+            onValueChange = { onEvent(ControlEvent.WindAngleChanged(it)) },
+            onValueChangeFinished = released,
+        )
+        OptionPicker(
+            label = stringResource(R.string.wind_strength),
+            options = WindStrength.entries,
+            selected = adjust.windStrength,
+            optionLabel = { it.displayName() },
+            enabled = enabled,
+            onSelect = { onEvent(ControlEvent.WindStrengthChanged(it)) },
         )
     }
 }
 
 @Composable
-private fun LevelSlider(
-    label: String,
-    value: Int,
-    levels: IntRange,
-    onValueChange: (Int) -> Unit,
-    onEvent: (ControlEvent) -> Unit,
-) {
-    SettingSlider(
-        label = label,
-        value = value.toFloat(),
-        valueText = value.toString(),
-        valueRange = levels.first.toFloat()..levels.last.toFloat(),
-        steps = levels.last - levels.first - 1,
-        onValueChange = { onValueChange(it.roundToInt()) },
-        onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
-    )
-}
-
-private fun MoodChoice.nameRes(): Int = when (this) {
-    MoodChoice.FIRST_SNOW -> R.string.mood_first_snow
-    MoodChoice.FLUFF -> R.string.mood_fluff
-    MoodChoice.HEAVY -> R.string.mood_heavy
-    MoodChoice.BLIZZARD -> R.string.mood_blizzard
-    MoodChoice.CUSTOM -> R.string.mood_custom
-}
-
-private fun FlakeSize.labelRes(): Int = when (this) {
-    FlakeSize.S -> R.string.flake_size_s
-    FlakeSize.M -> R.string.flake_size_m
-    FlakeSize.L -> R.string.flake_size_l
-}
-
-@Composable
-private fun LabCard(lab: LabUiState, onEvent: (ControlEvent) -> Unit) {
-    SnowingCard {
+private fun LabGroup(lab: LabUiState, onEvent: (ControlEvent) -> Unit) {
+    val released = { onEvent(ControlEvent.SliderReleased) }
+    Group {
         SectionTitle(stringResource(R.string.lab_title))
-        Text(
-            text = stringResource(R.string.lab_hint),
-            style = SnowingTheme.typography.label,
-            color = SnowingTheme.colors.contentMuted,
-        )
-        SettingSlider(
-            label = stringResource(R.string.lab_wind_direction),
-            value = lab.windDirection,
-            valueText = "${lab.windDirection.roundToInt()}°",
-            valueRange = -SnowSettings.MAX_WIND_DIRECTION..SnowSettings.MAX_WIND_DIRECTION,
-            onValueChange = { onEvent(ControlEvent.WindDirectionChanged(it)) },
-            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
-        )
+        Caption(stringResource(R.string.lab_hint))
         SettingSwitch(
             label = stringResource(R.string.lab_override_mood),
             checked = lab.overrideMood,
             onCheckedChange = { onEvent(ControlEvent.MoodOverrideToggled(it)) },
         )
-        SettingSlider(
-            label = stringResource(R.string.lab_layers),
-            value = lab.layers.toFloat(),
-            valueText = lab.layers.toString(),
-            valueRange = LAB_LAYERS_MIN.toFloat()..LAB_LAYERS_MAX.toFloat(),
-            steps = LAB_LAYERS_MAX - LAB_LAYERS_MIN - 1,
+        StepSlider(
+            label = stringResource(R.string.lab_speed),
+            value = lab.speed,
+            range = Mood.LEVELS,
             enabled = lab.overrideMood,
-            onValueChange = { onEvent(ControlEvent.LayersChanged(it.roundToInt())) },
-            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
+            onValueChange = { onEvent(ControlEvent.SpeedChanged(it)) },
+            onValueChangeFinished = released,
+        )
+        StepSlider(
+            label = stringResource(R.string.lab_layers),
+            value = lab.layers,
+            range = LabSettings.LAYERS,
+            enabled = lab.overrideMood,
+            onValueChange = { onEvent(ControlEvent.LayersChanged(it)) },
+            onValueChangeFinished = released,
         )
         SettingSlider(
             label = stringResource(R.string.lab_turbulence),
@@ -205,7 +187,7 @@ private fun LabCard(lab: LabUiState, onEvent: (ControlEvent) -> Unit) {
             valueText = lab.turbulence.asPercent(),
             enabled = lab.overrideMood,
             onValueChange = { onEvent(ControlEvent.TurbulenceChanged(it)) },
-            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
+            onValueChangeFinished = released,
         )
         SettingSlider(
             label = stringResource(R.string.lab_gusts),
@@ -213,16 +195,14 @@ private fun LabCard(lab: LabUiState, onEvent: (ControlEvent) -> Unit) {
             valueText = lab.gusts.asPercent(),
             enabled = lab.overrideMood,
             onValueChange = { onEvent(ControlEvent.GustsChanged(it)) },
-            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
+            onValueChangeFinished = released,
         )
-        SettingSlider(
+        OptionPicker(
             label = stringResource(R.string.lab_quality),
-            value = lab.quality.ordinal.toFloat(),
-            valueText = lab.quality.name,
-            valueRange = 0f..LabQuality.entries.lastIndex.toFloat(),
-            steps = LabQuality.entries.size - 2,
-            onValueChange = { onEvent(ControlEvent.QualityChanged(LabQuality.entries[it.roundToInt()])) },
-            onValueChangeFinished = { onEvent(ControlEvent.SliderReleased) },
+            options = LabQuality.entries,
+            selected = lab.quality,
+            optionLabel = { it.name.lowercase() },
+            onSelect = { onEvent(ControlEvent.QualityChanged(it)) },
         )
         SettingSwitch(
             label = stringResource(R.string.lab_hud),
@@ -247,14 +227,21 @@ private fun LabCard(lab: LabUiState, onEvent: (ControlEvent) -> Unit) {
     }
 }
 
-private const val LAB_LAYERS_MIN = 1
-private const val LAB_LAYERS_MAX = 5
-
 private fun Float.asPercent(): String = "${(this * 100).roundToInt()}%"
 
 private val previewMoods = MoodChoice.entries.map { choice ->
-    MoodItem(choice, intensity = (choice.ordinal + 1) * 2, selected = choice == MoodChoice.CUSTOM)
+    MoodItem(choice, intensity = (choice.ordinal + 1) * 2, selected = choice == MoodChoice.HEAVY)
 }
+
+private val previewAdjust = AdjustUiState(
+    mood = MoodChoice.HEAVY,
+    edited = true,
+    locked = false,
+    intensity = 7,
+    flakeSize = FlakeSize.M,
+    windAngle = 200,
+    windStrength = WindStrength.GENTLE,
+)
 
 @Preview
 @Composable
@@ -262,13 +249,14 @@ private fun ControlScreenPreview() {
     SnowingTheme {
         ControlScreen(
             state = ControlUiState(
+                loaded = true,
                 snowEnabled = true,
                 hasOverlayPermission = true,
                 moods = previewMoods,
-                customMood = CustomMoodUiState(FlakeSize.L, intensity = 5, speed = 2, wind = 2),
+                adjust = previewAdjust,
                 lab = LabUiState(
-                    windDirection = SnowSettings.DEFAULT_WIND_DIRECTION,
                     overrideMood = false,
+                    speed = 5,
                     layers = 3,
                     turbulence = 0.5f,
                     gusts = 0.4f,
@@ -290,7 +278,11 @@ private fun ControlScreenPreview() {
 private fun ControlScreenNoPermissionPreview() {
     SnowingTheme {
         ControlScreen(
-            state = ControlUiState(moods = previewMoods.map { it.copy(selected = it.choice == MoodChoice.FIRST_SNOW) }),
+            state = ControlUiState(
+                loaded = true,
+                moods = previewMoods.map { it.copy(selected = it.choice == MoodChoice.FIRST_SNOW) },
+                adjust = previewAdjust.copy(mood = MoodChoice.FIRST_SNOW, edited = false, locked = true),
+            ),
             onEvent = {},
             onGrantOverlayPermission = {},
         )

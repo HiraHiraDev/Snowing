@@ -13,6 +13,7 @@ import com.hirahira.snowing.pro.ProGate
 import com.hirahira.snowing.settings.BuiltInMoods
 import com.hirahira.snowing.settings.LabSettings
 import com.hirahira.snowing.settings.Mood
+import com.hirahira.snowing.settings.MoodAdjustment
 import com.hirahira.snowing.settings.MoodChoice
 import com.hirahira.snowing.settings.SnowSettings
 import com.hirahira.snowing.settings.SnowSettingsRepository
@@ -54,16 +55,20 @@ class ControlViewModel(
         draft,
         snowSwitch.enabled,
         hasPermission,
-    ) { saved, draft, enabled, permission ->
-        val settings = draft ?: saved ?: SnowSettings()
+        entitlements.hasPro,
+    ) { saved, draft, enabled, permission, hasPro ->
+        val settings = draft ?: saved ?: return@combine ControlUiState()
+        val choices = MoodChoice.BUILT_IN + listOfNotNull(MoodChoice.CUSTOM.takeIf { settings.customMood != null })
         ControlUiState(
+            loaded = true,
             snowEnabled = enabled,
             hasOverlayPermission = permission,
-            moods = MoodChoice.entries.map { choice ->
-                val mood = BuiltInMoods.of(choice) ?: settings.customMood
+            moods = choices.map { choice ->
+                val mood = BuiltInMoods.of(choice) ?: settings.customMood!!
                 MoodItem(choice = choice, intensity = mood.intensity, selected = choice == settings.mood)
             },
-            customMood = if (settings.mood == MoodChoice.CUSTOM) settings.customMood.toUiState() else null,
+            adjust = settings.toAdjustUiState(locked = !ProGate.canAdjustMoods(hasPro)),
+            timeOfDay = settings.timeOfDay,
             lab = if (labEnabled) settings.toLabUiState() else null,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ControlUiState())
@@ -77,15 +82,16 @@ class ControlViewModel(
                 hasPermission.value = snowSwitch.hasPermission()
                 viewModelScope.launch { snowSwitch.reconcile() }
             }
-            is ControlEvent.MoodSelected -> edit(now = true) { it.copy(mood = event.choice) }
-            is ControlEvent.CustomFlakeSizeChanged -> editCustom(now = true) { it.copy(flakeSize = event.value) }
-            is ControlEvent.CustomIntensityChanged -> editCustom { it.copy(intensity = event.value) }
-            is ControlEvent.CustomSpeedChanged -> editCustom { it.copy(speed = event.value) }
-            is ControlEvent.CustomWindChanged -> editCustom { it.copy(wind = event.value) }
-            is ControlEvent.WindDirectionChanged -> edit {
-                it.copy(windDirection = event.value.coerceIn(-SnowSettings.MAX_WIND_DIRECTION, SnowSettings.MAX_WIND_DIRECTION))
-            }
+            is ControlEvent.MoodSelected -> edit(now = true) { it.withMood(event.choice) }
+            is ControlEvent.IntensityChanged -> adjust { it.copy(intensity = event.value) }
+            is ControlEvent.FlakeSizeChanged -> adjust(now = true) { it.copy(flakeSize = event.value) }
+            is ControlEvent.WindAngleChanged -> adjust { it.copy(windAngle = event.value) }
+            is ControlEvent.WindStrengthChanged -> adjust(now = true) { it.copy(windStrength = event.value) }
+            ControlEvent.RestoreMood -> edit(now = true) { it.copy(moodAdjustment = null) }
+            ControlEvent.SaveMoodAsNew -> if (canAdjust()) edit(now = true) { it.savedAsNewMood() }
+            is ControlEvent.TimeOfDayChanged -> edit(now = true) { it.copy(timeOfDay = event.value) }
             is ControlEvent.MoodOverrideToggled -> edit(now = true) { it.withMoodOverride(event.enabled) }
+            is ControlEvent.SpeedChanged -> editLab { it.copy(speed = event.value.coerceIn(Mood.LEVELS)) }
             is ControlEvent.LayersChanged -> editLab { it.copy(layers = event.value) }
             is ControlEvent.TurbulenceChanged -> editLab { it.copy(turbulence = event.value) }
             is ControlEvent.GustsChanged -> editLab { it.copy(gusts = event.value) }
@@ -97,6 +103,8 @@ class ControlViewModel(
             is ControlEvent.InstantChangesToggled -> editLab(now = true) { it.copy(instantChanges = event.enabled) }
         }
     }
+
+    private fun canAdjust(): Boolean = ProGate.canAdjustMoods(entitlements.hasPro.value)
 
     private fun edit(now: Boolean = false, transform: (SnowSettings) -> SnowSettings) {
         val base = draft.value ?: saved.value
@@ -121,10 +129,10 @@ class ControlViewModel(
     private fun editLab(now: Boolean = false, transform: (LabSettings) -> LabSettings) =
         edit(now) { it.copy(lab = transform(it.lab)) }
 
-    // Through BuiltInMoods.custom, so levels stay in range and the hidden parameters stay Fluff's.
-    private fun editCustom(now: Boolean = false, transform: (Mood) -> Mood) = edit(now) {
-        val edited = transform(it.customMood)
-        it.copy(customMood = BuiltInMoods.custom(edited.flakeSize, edited.intensity, edited.speed, edited.wind))
+    // Locked without Pro, so the controls stay put instead of showing a change that is never written.
+    private fun adjust(now: Boolean = false, transform: (MoodAdjustment) -> MoodAdjustment) {
+        if (!canAdjust()) return
+        edit(now) { it.withAdjustment(transform(it.activeMood.adjustment)) }
     }
 
     private fun saveNow() {
@@ -133,7 +141,6 @@ class ControlViewModel(
         persistDraft()
     }
 
-    // Without Pro the custom mood is not written, so the draft keeps showing it as a preview (ADR-0007).
     private fun persistDraft() {
         val pending = draft.value ?: return
         viewModelScope.launch {
@@ -141,12 +148,33 @@ class ControlViewModel(
         }
     }
 
-    private fun Mood.toUiState() = CustomMoodUiState(
-        flakeSize = flakeSize,
-        intensity = intensity,
-        speed = speed,
-        wind = wind,
-    )
+    private fun SnowSettings.withMood(choice: MoodChoice): SnowSettings {
+        if (choice == MoodChoice.CUSTOM && customMood == null) return this
+        return copy(mood = choice, moodAdjustment = null)
+    }
+
+    // An adjustment that lands back on the mood as designed is no change at all.
+    private fun SnowSettings.withAdjustment(adjustment: MoodAdjustment): SnowSettings {
+        val normalized = adjustment.normalized()
+        return copy(moodAdjustment = normalized.takeIf { it != baseMood.adjustment })
+    }
+
+    // The custom mood keeps the hidden parameters of the mood it grew from (ADR-0010).
+    private fun SnowSettings.savedAsNewMood(): SnowSettings =
+        copy(mood = MoodChoice.CUSTOM, customMood = activeMood, moodAdjustment = null)
+
+    private fun SnowSettings.toAdjustUiState(locked: Boolean): AdjustUiState {
+        val mood = activeMood
+        return AdjustUiState(
+            mood = this.mood,
+            edited = isMoodAdjusted,
+            locked = locked,
+            intensity = mood.intensity,
+            flakeSize = mood.flakeSize,
+            windAngle = mood.windAngle,
+            windStrength = mood.windStrength,
+        )
+    }
 
     // Tuning starts from what is falling now, so turning the override on changes nothing until a slider moves.
     private fun SnowSettings.withMoodOverride(enabled: Boolean): SnowSettings {
@@ -155,6 +183,7 @@ class ControlViewModel(
         return copy(
             lab = lab.copy(
                 overrideMood = true,
+                speed = mood.speed,
                 layers = mood.layers,
                 turbulence = mood.turbulence,
                 gusts = mood.gusts,
@@ -164,8 +193,8 @@ class ControlViewModel(
 
     // Without the override the disabled sliders show the active mood's values, the ones actually in use.
     private fun SnowSettings.toLabUiState() = LabUiState(
-        windDirection = windDirection,
         overrideMood = lab.overrideMood,
+        speed = if (lab.overrideMood) lab.speed else activeMood.speed,
         layers = if (lab.overrideMood) lab.layers else activeMood.layers,
         turbulence = if (lab.overrideMood) lab.turbulence else activeMood.turbulence,
         gusts = if (lab.overrideMood) lab.gusts else activeMood.gusts,

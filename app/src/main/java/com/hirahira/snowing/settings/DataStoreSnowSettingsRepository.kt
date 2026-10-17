@@ -30,20 +30,18 @@ class DataStoreSnowSettingsRepository(
 
     private fun Preferences.toSettings(): SnowSettings {
         val defaults = SnowSettings()
-        val custom = defaults.customMood
+        val customMood = readCustomMood()
+        val mood = MoodChoice.fromKey(this[Keys.MOOD])
+            ?.takeUnless { it == MoodChoice.CUSTOM && customMood == null }
+            ?: defaults.mood
         return SnowSettings(
-            mood = MoodChoice.fromKey(this[Keys.MOOD]) ?: defaults.mood,
-            customMood = BuiltInMoods.custom(
-                flakeSize = this[Keys.CUSTOM_SIZE]?.let { name -> FlakeSize.entries.firstOrNull { it.name == name } }
-                    ?: custom.flakeSize,
-                intensity = this[Keys.CUSTOM_INTENSITY] ?: custom.intensity,
-                speed = this[Keys.CUSTOM_SPEED] ?: custom.speed,
-                wind = this[Keys.CUSTOM_WIND] ?: custom.wind,
-            ),
-            windDirection = (this[Keys.WIND_DIRECTION] ?: defaults.windDirection)
-                .coerceIn(-SnowSettings.MAX_WIND_DIRECTION, SnowSettings.MAX_WIND_DIRECTION),
+            mood = mood,
+            customMood = customMood,
+            moodAdjustment = readAdjustment(),
+            timeOfDay = this[Keys.TIME_OF_DAY].toEnum(defaults.timeOfDay),
             lab = LabSettings(
                 overrideMood = this[Keys.LAB_OVERRIDE] ?: defaults.lab.overrideMood,
+                speed = this[Keys.LAB_SPEED] ?: defaults.lab.speed,
                 layers = this[Keys.LAB_LAYERS] ?: defaults.lab.layers,
                 turbulence = this[Keys.LAB_TURBULENCE] ?: defaults.lab.turbulence,
                 gusts = this[Keys.LAB_GUSTS] ?: defaults.lab.gusts,
@@ -51,22 +49,53 @@ class DataStoreSnowSettingsRepository(
                 showTracer = this[Keys.LAB_TRACER] ?: defaults.lab.showTracer,
                 foreground = this[Keys.LAB_FOREGROUND] ?: defaults.lab.foreground,
                 instantChanges = this[Keys.LAB_INSTANT] ?: defaults.lab.instantChanges,
-                quality = this[Keys.LAB_QUALITY]
-                    ?.let { name -> LabQuality.entries.firstOrNull { it.name == name } }
-                    ?: defaults.lab.quality,
+                quality = this[Keys.LAB_QUALITY].toEnum(defaults.lab.quality),
             ),
         )
     }
 
-    // Only the custom mood's visible values are stored; its hidden ones come from code (ADR-0007).
+    // The custom mood keeps the hidden parameters of the mood it was saved from (ADR-0010), so all are stored.
+    private fun Preferences.readCustomMood(): Mood? {
+        val look = readAdjustment(Keys.Custom) ?: return null
+        val base = BuiltInMoods.of(SnowSettings.DEFAULT_MOOD)!!
+        return base.copy(
+            speed = this[Keys.CUSTOM_SPEED] ?: base.speed,
+            layers = this[Keys.CUSTOM_LAYERS] ?: base.layers,
+            turbulence = this[Keys.CUSTOM_TURBULENCE] ?: base.turbulence,
+            gusts = this[Keys.CUSTOM_GUSTS] ?: base.gusts,
+        ).adjusted(look)
+    }
+
+    private fun Preferences.readAdjustment(keys: Keys.Look = Keys.Adjustment): MoodAdjustment? {
+        val intensity = this[keys.intensity] ?: return null
+        val defaults = BuiltInMoods.of(SnowSettings.DEFAULT_MOOD)!!
+        return MoodAdjustment(
+            intensity = intensity,
+            flakeSize = this[keys.size].toEnum(defaults.flakeSize),
+            windAngle = this[keys.windAngle] ?: defaults.windAngle,
+            windStrength = this[keys.windStrength].toEnum(defaults.windStrength),
+        ).normalized()
+    }
+
     private fun MutablePreferences.write(settings: SnowSettings) {
         this[Keys.MOOD] = settings.mood.key
-        this[Keys.CUSTOM_SIZE] = settings.customMood.flakeSize.name
-        this[Keys.CUSTOM_INTENSITY] = settings.customMood.intensity
-        this[Keys.CUSTOM_SPEED] = settings.customMood.speed
-        this[Keys.CUSTOM_WIND] = settings.customMood.wind
-        this[Keys.WIND_DIRECTION] = settings.windDirection
+        writeLook(Keys.Custom, settings.customMood?.adjustment)
+        val custom = settings.customMood
+        if (custom == null) {
+            remove(Keys.CUSTOM_SPEED)
+            remove(Keys.CUSTOM_LAYERS)
+            remove(Keys.CUSTOM_TURBULENCE)
+            remove(Keys.CUSTOM_GUSTS)
+        } else {
+            this[Keys.CUSTOM_SPEED] = custom.speed
+            this[Keys.CUSTOM_LAYERS] = custom.layers
+            this[Keys.CUSTOM_TURBULENCE] = custom.turbulence
+            this[Keys.CUSTOM_GUSTS] = custom.gusts
+        }
+        writeLook(Keys.Adjustment, settings.moodAdjustment)
+        this[Keys.TIME_OF_DAY] = settings.timeOfDay.name
         this[Keys.LAB_OVERRIDE] = settings.lab.overrideMood
+        this[Keys.LAB_SPEED] = settings.lab.speed
         this[Keys.LAB_LAYERS] = settings.lab.layers
         this[Keys.LAB_TURBULENCE] = settings.lab.turbulence
         this[Keys.LAB_GUSTS] = settings.lab.gusts
@@ -77,14 +106,42 @@ class DataStoreSnowSettingsRepository(
         this[Keys.LAB_QUALITY] = settings.lab.quality.name
     }
 
+    private fun MutablePreferences.writeLook(keys: Keys.Look, look: MoodAdjustment?) {
+        if (look == null) {
+            remove(keys.intensity)
+            remove(keys.size)
+            remove(keys.windAngle)
+            remove(keys.windStrength)
+        } else {
+            this[keys.intensity] = look.intensity
+            this[keys.size] = look.flakeSize.name
+            this[keys.windAngle] = look.windAngle
+            this[keys.windStrength] = look.windStrength.name
+        }
+    }
+
+    private inline fun <reified E : Enum<E>> String?.toEnum(fallback: E): E =
+        enumValues<E>().firstOrNull { it.name == this } ?: fallback
+
     private object Keys {
+        /** The visible part of a mood; its intensity key doubles as "present". */
+        class Look(prefix: String) {
+            val intensity = intPreferencesKey("${prefix}_intensity")
+            val size = stringPreferencesKey("${prefix}_size")
+            val windAngle = intPreferencesKey("${prefix}_wind_angle")
+            val windStrength = stringPreferencesKey("${prefix}_wind_strength")
+        }
+
         val MOOD = stringPreferencesKey("mood")
-        val CUSTOM_SIZE = stringPreferencesKey("custom_size")
-        val CUSTOM_INTENSITY = intPreferencesKey("custom_intensity")
-        val CUSTOM_SPEED = intPreferencesKey("custom_speed")
-        val CUSTOM_WIND = intPreferencesKey("custom_wind")
-        val WIND_DIRECTION = floatPreferencesKey("wind_direction")
+        val Custom = Look("custom_mood")
+        val CUSTOM_SPEED = intPreferencesKey("custom_mood_speed")
+        val CUSTOM_LAYERS = intPreferencesKey("custom_mood_layers")
+        val CUSTOM_TURBULENCE = floatPreferencesKey("custom_mood_turbulence")
+        val CUSTOM_GUSTS = floatPreferencesKey("custom_mood_gusts")
+        val Adjustment = Look("adjust")
+        val TIME_OF_DAY = stringPreferencesKey("time_of_day")
         val LAB_OVERRIDE = booleanPreferencesKey("lab_override")
+        val LAB_SPEED = intPreferencesKey("lab_speed")
         val LAB_LAYERS = intPreferencesKey("lab_layers")
         val LAB_TURBULENCE = floatPreferencesKey("lab_turbulence")
         val LAB_GUSTS = floatPreferencesKey("lab_gusts")

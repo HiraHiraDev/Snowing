@@ -15,8 +15,9 @@ import kotlinx.coroutines.launch
  *     adb shell am start -n com.hirahira.snowing/.debug.PerfControlActivity \
  *         --ez snow true --es mood blizzard --ez bokeh true --es quality low
  *
- * `mood` takes a MoodChoice key. `override` with `layers`, `turbulence` and `gusts`
- * replaces the mood's hidden parameters, `direction` sets the wind direction in degrees.
+ * `mood` takes a MoodChoice key and drops any adjustment. `override` with `speed`, `layers`,
+ * `turbulence` and `gusts` replaces the mood's hidden parameters. `direction` (int, degrees
+ * clockwise from up, as on the wind wheel) adjusts the active mood's wind.
  *
  * Every extra is optional; only the ones given change. Guarded by the DUMP
  * permission, which adb shell holds and regular apps cannot get.
@@ -28,12 +29,19 @@ class PerfControlActivity : ComponentActivity() {
         val extras = intent.extras ?: Bundle.EMPTY
         val container = appContainer
         lifecycleScope.launch {
-            container.settingsRepository.update { current ->
+            container.settingsRepository.update { saved ->
+                val current = MoodChoice.fromKey(extras.getString(EXTRA_MOOD))
+                    ?.let { saved.copy(mood = it, moodAdjustment = null) }
+                    ?: saved
                 current.copy(
-                    mood = MoodChoice.fromKey(extras.getString(EXTRA_MOOD)) ?: current.mood,
-                    windDirection = extras.floatOr(EXTRA_DIRECTION, current.windDirection),
+                    moodAdjustment = if (extras.containsKey(EXTRA_DIRECTION)) {
+                        current.activeMood.adjustment.copy(windAngle = extras.getInt(EXTRA_DIRECTION)).normalized()
+                    } else {
+                        current.moodAdjustment
+                    },
                     lab = current.lab.copy(
                         overrideMood = extras.booleanOr(EXTRA_OVERRIDE, current.lab.overrideMood),
+                        speed = extras.intOr(EXTRA_SPEED, current.lab.speed),
                         layers = extras.intOr(EXTRA_LAYERS, current.lab.layers),
                         turbulence = extras.floatOr(EXTRA_TURBULENCE, current.lab.turbulence),
                         gusts = extras.floatOr(EXTRA_GUSTS, current.lab.gusts),
@@ -67,6 +75,7 @@ class PerfControlActivity : ComponentActivity() {
         const val EXTRA_MOOD = "mood"
         const val EXTRA_DIRECTION = "direction"
         const val EXTRA_OVERRIDE = "override"
+        const val EXTRA_SPEED = "speed"
         const val EXTRA_LAYERS = "layers"
         const val EXTRA_TURBULENCE = "turbulence"
         const val EXTRA_GUSTS = "gusts"

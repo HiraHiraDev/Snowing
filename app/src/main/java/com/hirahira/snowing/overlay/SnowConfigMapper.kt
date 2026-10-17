@@ -6,11 +6,12 @@ import com.hirahira.snowing.settings.FlakeSize
 import com.hirahira.snowing.settings.LabQuality
 import com.hirahira.snowing.settings.Mood
 import com.hirahira.snowing.settings.SnowSettings
+import com.hirahira.snowing.settings.WindStrength
 import kotlin.math.sin
 
 /**
  * The single place where the look of the snow is tuned: mood levels and
- * lab sliders map linearly onto these physical ranges (ADR-0007).
+ * lab sliders map linearly onto these physical ranges (ADR-0007, ADR-0010).
  */
 object SnowTuning {
     /** Flakes per 10 000 dp². */
@@ -22,8 +23,18 @@ object SnowTuning {
     /** Flake radius from the farthest to the closest layer, dp. */
     val RadiusRange = 1.2f..4.2f
 
-    /** Mean wind at the strongest mood level, dp/s, before the direction takes its share. */
-    const val WIND_MAX_DP_PER_S = 60f
+    /** Mean wind per mood strength, dp/s, before the direction takes its share (ADR-0010). */
+    fun windSpeed(strength: WindStrength): Float = when (strength) {
+        WindStrength.CALM -> 0f
+        WindStrength.GENTLE -> 35f
+        WindStrength.GUSTY -> 80f
+    }
+
+    /** Added to the mood's gusts (0..1): a gusty wind also gusts harder. */
+    fun gustBoost(strength: WindStrength): Float = when (strength) {
+        WindStrength.CALM, WindStrength.GENTLE -> 0f
+        WindStrength.GUSTY -> 0.3f
+    }
 
     /** Flake radius multiplier per mood size class. */
     fun sizeFactor(size: FlakeSize): Float = when (size) {
@@ -86,25 +97,26 @@ object SnowConfigMapper {
         LabQuality.SAVER -> QualityLevel.SAVER
     }
 
-    /** The active mood with the global wind direction; the lab may replace the mood's hidden parameters. */
+    /** The active mood, adjustments included; the lab may replace the mood's hidden parameters. */
     fun toConfig(settings: SnowSettings): SnowConfig {
         val mood = settings.activeMood
         val lab = settings.lab
+        val speed = if (lab.overrideMood) lab.speed else mood.speed
         val layers = if (lab.overrideMood) lab.layers else mood.layers
         val turbulence = if (lab.overrideMood) lab.turbulence else mood.turbulence
         val gusts = if (lab.overrideMood) lab.gusts else mood.gusts
         val size = SnowTuning.sizeFactor(mood.flakeSize)
-        // The wheel tilts the wind; snow always falls down (ADR-0006), so only the sideways part counts.
-        val direction = settings.windDirection.coerceIn(-SnowSettings.MAX_WIND_DIRECTION, SnowSettings.MAX_WIND_DIRECTION)
-        val windStrength = SnowTuning.WIND_MAX_DP_PER_S * mood.wind.fractionOf(Mood.WIND_LEVELS)
+        // The wheel turns all the way round, but snow always falls down (ADR-0006, ADR-0010),
+        // so only the sideways part of the needle counts: 90° blows right, 270° left.
+        val sideways = sin(Math.toRadians(mood.windAngle.toDouble())).toFloat()
         return SnowConfig(
             density = SnowTuning.DensityRange.at(mood.intensity.fractionOf(Mood.LEVELS)),
-            fallSpeed = SnowTuning.SpeedRange.at(mood.speed.fractionOf(Mood.LEVELS)),
+            fallSpeed = SnowTuning.SpeedRange.at(speed.fractionOf(Mood.LEVELS)),
             minRadius = SnowTuning.RadiusRange.start * size,
             maxRadius = SnowTuning.RadiusRange.endInclusive * size,
             layers = layers.coerceAtLeast(1),
-            wind = windStrength * sin(Math.toRadians(direction.toDouble())).toFloat(),
-            gusts = SnowTuning.GustsRange.at(gusts),
+            wind = SnowTuning.windSpeed(mood.windStrength) * sideways,
+            gusts = SnowTuning.GustsRange.at(gusts + SnowTuning.gustBoost(mood.windStrength)),
             turbulence = SnowTuning.TurbulenceRange.at(turbulence),
             flutter = SnowTuning.FlutterRange.at(turbulence),
             opacity = SnowTuning.OPACITY,

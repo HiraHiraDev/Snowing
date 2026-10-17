@@ -1,36 +1,44 @@
 package com.hirahira.snowing.settings
 
 /**
- * What the user chose, in UI terms (ADR-0007). Translated to physics by
+ * What the user chose, in UI terms (ADR-0007, ADR-0010). Translated to physics by
  * [com.hirahira.snowing.overlay.SnowConfigMapper]; nothing here knows about pixels.
  */
 data class SnowSettings(
-    val mood: MoodChoice = MoodChoice.FIRST_SNOW,
-    /** The user's own mood, kept even while a built-in one is active. */
-    val customMood: Mood = BuiltInMoods.CUSTOM_BASE,
-    /**
-     * Degrees from straight down, positive blows to the right, within
-     * ±[MAX_WIND_DIRECTION]. Applies to every mood; a mood only sets the strength.
-     */
-    val windDirection: Float = DEFAULT_WIND_DIRECTION,
+    val mood: MoodChoice = DEFAULT_MOOD,
+    /** The one custom slot, filled by "Save as new"; null until then. */
+    val customMood: Mood? = null,
+    /** Changes to the chosen mood ("edited"); choosing another mood drops them. */
+    val moodAdjustment: MoodAdjustment? = null,
+    /** Colors the app's background only, never the snow. */
+    val timeOfDay: TimeOfDay = TimeOfDay.AUTO,
     val lab: LabSettings = LabSettings(),
 ) {
-    val activeMood: Mood get() = BuiltInMoods.of(mood) ?: customMood
+    /** The chosen mood as designed; an empty custom slot falls back to the default mood. */
+    val baseMood: Mood get() = BuiltInMoods.of(mood) ?: customMood ?: BuiltInMoods.of(DEFAULT_MOOD)!!
+
+    val activeMood: Mood get() = moodAdjustment?.let(baseMood::adjusted) ?: baseMood
+
+    val isMoodAdjusted: Boolean get() = moodAdjustment != null
 
     companion object {
-        // Not straight down, so a mood's wind shows before the wind wheel exists.
-        const val DEFAULT_WIND_DIRECTION = 20f
-        const val MAX_WIND_DIRECTION = 75f
+        val DEFAULT_MOOD = MoodChoice.FIRST_SNOW
     }
 }
+
+/** Sky of the app's background (ADR-0010): [AUTO] follows the device clock. */
+enum class TimeOfDay { AUTO, DAWN, DAY, DUSK, NIGHT }
 
 /**
  * Prototype knobs for tuning the snowfall. Only exposed in debug builds;
  * release builds run with the defaults.
  */
 data class LabSettings(
-    /** Lets the three sliders below replace the mood's hidden parameters, for tuning moods. */
+    /** Lets the four sliders below replace the mood's hidden parameters, for tuning moods. */
     val overrideMood: Boolean = false,
+    /** In [Mood.LEVELS]. */
+    val speed: Int = 3,
+    /** In [LAYERS]. */
     val layers: Int = 3,
     /** Swirls in the air and each flake's flutter, 0..1. */
     val turbulence: Float = 0.5f,
@@ -44,6 +52,10 @@ data class LabSettings(
     val instantChanges: Boolean = false,
     /** Pins the quality level for testing; [LabQuality.AUTO] lets the device decide (ADR-0008). */
     val quality: LabQuality = LabQuality.AUTO,
-)
+) {
+    companion object {
+        val LAYERS = 1..5
+    }
+}
 
 enum class LabQuality { AUTO, HIGH, MEDIUM, LOW, SAVER }

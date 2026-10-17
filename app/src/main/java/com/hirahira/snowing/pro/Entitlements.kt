@@ -16,16 +16,20 @@ class UnlockedEntitlements : Entitlements {
 }
 
 /**
- * What may be stored without Pro (ADR-0007). The custom mood is Pro: without it
- * the user can pick and shape it, but only [saved]'s choice and custom mood are
- * written, so the edit stays a preview.
+ * Adjusting moods is Pro (ADR-0010): without it the four built-in moods can be
+ * picked, but nothing can be changed or saved to the custom slot.
  */
 object ProGate {
+    fun canAdjustMoods(hasPro: Boolean): Boolean = hasPro
+
+    /** What of [edited] may be written over [saved]; a guard below the UI's own lock. */
     fun persistable(edited: SnowSettings, saved: SnowSettings, hasPro: Boolean): SnowSettings {
         if (hasPro) return edited
         return edited.copy(
             mood = if (edited.mood == MoodChoice.CUSTOM) saved.mood else edited.mood,
             customMood = saved.customMood,
+            // Dropping changes is always allowed; making new ones is not.
+            moodAdjustment = edited.moodAdjustment?.takeIf { it == saved.moodAdjustment },
         )
     }
 }

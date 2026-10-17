@@ -15,7 +15,7 @@ private val LocalSizes = staticCompositionLocalOf { SnowingSizes() }
 private val LocalShapes = staticCompositionLocalOf { SnowingShapes() }
 private val LocalTypography = staticCompositionLocalOf<SnowingTypography> { error("SnowingTheme not provided") }
 
-/** Access point for tokens: `SnowingTheme.colors.surface`, `SnowingTheme.spacing.m`, … */
+/** Access point for tokens: `SnowingTheme.colors.ink`, `SnowingTheme.spacing.m`, … */
 object SnowingTheme {
     val colors: SnowingColors
         @Composable @ReadOnlyComposable get() = LocalColors.current
@@ -31,12 +31,13 @@ object SnowingTheme {
 
 /**
  * Provides Snowing tokens and bridges them into MaterialTheme, so Material
- * components (Slider, Switch, Button) follow the same palette.
+ * components (Slider, Switch, Button) follow the same palette. [colors] follow
+ * the sky: `SnowingColors.forSky(Sky.at(hour))`.
  */
 @Composable
 fun SnowingTheme(
-    colors: SnowingColors = PlaceholderNightColors,
-    typography: SnowingTypography = PlaceholderTypography,
+    colors: SnowingColors = SnowingColors.forSky(Sky.Night),
+    typography: SnowingTypography = DefaultTypography,
     spacing: SnowingSpacing = SnowingSpacing(),
     sizes: SnowingSizes = SnowingSizes(),
     shapes: SnowingShapes = SnowingShapes(),
@@ -54,17 +55,22 @@ fun SnowingTheme(
 }
 
 private fun SnowingColors.toMaterialColorScheme(): ColorScheme {
-    val base = if (isDark) darkColorScheme() else lightColorScheme()
+    val base = if (isLightSky) lightColorScheme() else darkColorScheme()
     return base.copy(
-        primary = primary,
-        onPrimary = onPrimary,
-        background = background,
-        onBackground = content,
-        surface = surface,
-        onSurface = content,
-        surfaceVariant = surfaceRaised,
-        onSurfaceVariant = contentMuted,
-        surfaceContainerHighest = surfaceRaised,
-        outline = contentMuted,
+        primary = accentFill,
+        onPrimary = ctaDot,
+        secondaryContainer = accentFill.copy(alpha = SELECTED_ALPHA),
+        onSecondaryContainer = ink,
+        background = sky.skyTop,
+        onBackground = ink,
+        surface = sky.skyTop,
+        onSurface = ink,
+        surfaceVariant = line,
+        onSurfaceVariant = inkSoft,
+        surfaceContainerHighest = tickDim,
+        outline = inkSoft,
+        outlineVariant = line,
     )
 }
+
+private const val SELECTED_ALPHA = 0.22f

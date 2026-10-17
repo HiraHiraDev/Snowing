@@ -2,23 +2,43 @@
 <resources>
     <string name="app_name" translatable="false">Snowing</string>
 
+    <string name="tab_stats">Stats</string>
+    <string name="tab_snow">Snow</string>
+    <string name="tab_moods">Moods</string>
+
     <string name="control_start">Let it snow</string>
     <string name="control_stop">Stop the snow</string>
     <string name="control_intensity">Intensity</string>
-    <string name="control_speed">Speed</string>
     <string name="control_wind">Wind</string>
 
     <string name="mood_section">Mood</string>
-    <string name="mood_first_snow">First Snow</string>
-    <string name="mood_fluff">Fluff</string>
-    <string name="mood_heavy">Heavy Snow</string>
+    <string name="mood_first_snow">First snow</string>
+    <string name="mood_fluff">Powder</string>
+    <string name="mood_heavy">Heavy</string>
     <string name="mood_blizzard">Blizzard</string>
     <string name="mood_custom">Your own</string>
     <string name="mood_intensity_description">Intensity %1$d of %2$d</string>
-    <string name="custom_flake_size">Flake size</string>
+    <string name="flake_size">Flake size</string>
+    <string name="degrees" translatable="false">%1$d°</string>
     <string name="flake_size_s" translatable="false">S</string>
     <string name="flake_size_m" translatable="false">M</string>
     <string name="flake_size_l" translatable="false">L</string>
+    <string name="adjust">Adjust</string>
+    <string name="adjust_applies_to">changes apply to %1$s</string>
+    <string name="adjust_edited">%1$s · edited</string>
+    <string name="adjust_locked">Adjusting moods comes with Pro</string>
+    <string name="adjust_restore">Restore</string>
+    <string name="adjust_save_new">Save as new</string>
+    <string name="wind_strength">Wind strength</string>
+    <string name="wind_calm">Calm</string>
+    <string name="wind_gentle">Gentle</string>
+    <string name="wind_gusty">Gusty</string>
+    <string name="time_of_day">Time of day</string>
+    <string name="tod_auto">Auto</string>
+    <string name="tod_dawn">Dawn</string>
+    <string name="tod_day">Day</string>
+    <string name="tod_dusk">Dusk</string>
+    <string name="tod_night">Night</string>
 
     <string name="permission_title">Allow Snowing to draw over other apps</string>
     <string name="permission_body">Snow falls on top of everything you use. Android asks you to allow this once, in system settings.</string>
@@ -33,8 +53,8 @@
     <string name="lab_hint" translatable="false">Debug builds only. Tools for tuning the snowfall.</string>
     <string name="lab_layers" translatable="false">Depth layers</string>
     <string name="lab_turbulence" translatable="false">Turbulence (swirls, flutter)</string>
-    <string name="lab_wind_direction" translatable="false">Wind direction (° from vertical, until the wind wheel)</string>
-    <string name="lab_override_mood" translatable="false">Override mood: layers, turbulence, gusts</string>
+    <string name="lab_override_mood" translatable="false">Override mood: speed, layers, turbulence, gusts</string>
+    <string name="lab_speed" translatable="false">Fall speed</string>
     <string name="lab_gusts" translatable="false">Gusts</string>
     <string name="lab_quality" translatable="false">Quality level (AUTO = device decides)</string>
     <string name="lab_hud" translatable="false">Frame stats (HUD)</string>
