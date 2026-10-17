@@ -26,10 +26,10 @@ data class Mood(
     /** Gusts sweeping across the screen, 0..1. */
     val gusts: Float,
 ) {
-    /** The part "Adjust" can change. */
-    val adjustment: MoodAdjustment get() = MoodAdjustment(intensity, flakeSize, windAngle, windStrength)
+    /** The part a user sets on their own mood. */
+    val look: MoodLook get() = MoodLook(intensity, flakeSize, windAngle, windStrength)
 
-    fun adjusted(adjustment: MoodAdjustment): Mood = adjustment.normalized().let {
+    fun withLook(look: MoodLook): Mood = look.normalized().let {
         copy(intensity = it.intensity, flakeSize = it.flakeSize, windAngle = it.windAngle, windStrength = it.windStrength)
     }
 
@@ -39,14 +39,14 @@ data class Mood(
     }
 }
 
-/** User changes to the active mood (ADR-0010); the hidden parameters always stay the mood's own. */
-data class MoodAdjustment(
+/** What a user sets on their own mood (ADR-0010); the hidden parameters stay the ones it was created with. */
+data class MoodLook(
     val intensity: Int,
     val flakeSize: FlakeSize,
     val windAngle: Int,
     val windStrength: WindStrength,
 ) {
-    fun normalized(): MoodAdjustment = copy(
+    fun normalized(): MoodLook = copy(
         intensity = intensity.coerceIn(Mood.LEVELS),
         windAngle = windAngle.mod(Mood.WIND_ANGLES.count()),
     )

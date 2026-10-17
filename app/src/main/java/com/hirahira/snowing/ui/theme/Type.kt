@@ -81,6 +81,7 @@ internal val DefaultTypography = SnowingTypography(
     body = sans(14.sp, FontWeight.Medium),
     label = sans(13.sp, FontWeight.SemiBold),
     hint = sans(13.sp, FontWeight.Medium),
+    note = sans(11.sp, FontWeight.Medium),
     action = underlined(sans(13.sp, FontWeight.Bold)),
     meta = sans(12.sp, FontWeight.Medium),
     metaStrong = sans(12.sp, FontWeight.SemiBold),

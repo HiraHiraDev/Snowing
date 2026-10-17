@@ -37,7 +37,6 @@ class DataStoreSnowSettingsRepository(
         return SnowSettings(
             mood = mood,
             customMood = customMood,
-            moodAdjustment = readAdjustment(),
             timeOfDay = this[Keys.TIME_OF_DAY].toEnum(defaults.timeOfDay),
             lab = LabSettings(
                 overrideMood = this[Keys.LAB_OVERRIDE] ?: defaults.lab.overrideMood,
@@ -56,20 +55,20 @@ class DataStoreSnowSettingsRepository(
 
     // The custom mood keeps the hidden parameters of the mood it was saved from (ADR-0010), so all are stored.
     private fun Preferences.readCustomMood(): Mood? {
-        val look = readAdjustment(Keys.Custom) ?: return null
+        val look = readLook(Keys.Custom) ?: return null
         val base = BuiltInMoods.of(SnowSettings.DEFAULT_MOOD)!!
         return base.copy(
             speed = this[Keys.CUSTOM_SPEED] ?: base.speed,
             layers = this[Keys.CUSTOM_LAYERS] ?: base.layers,
             turbulence = this[Keys.CUSTOM_TURBULENCE] ?: base.turbulence,
             gusts = this[Keys.CUSTOM_GUSTS] ?: base.gusts,
-        ).adjusted(look)
+        ).withLook(look)
     }
 
-    private fun Preferences.readAdjustment(keys: Keys.Look = Keys.Adjustment): MoodAdjustment? {
+    private fun Preferences.readLook(keys: Keys.Look): MoodLook? {
         val intensity = this[keys.intensity] ?: return null
         val defaults = BuiltInMoods.of(SnowSettings.DEFAULT_MOOD)!!
-        return MoodAdjustment(
+        return MoodLook(
             intensity = intensity,
             flakeSize = this[keys.size].toEnum(defaults.flakeSize),
             windAngle = this[keys.windAngle] ?: defaults.windAngle,
@@ -79,7 +78,7 @@ class DataStoreSnowSettingsRepository(
 
     private fun MutablePreferences.write(settings: SnowSettings) {
         this[Keys.MOOD] = settings.mood.key
-        writeLook(Keys.Custom, settings.customMood?.adjustment)
+        writeLook(Keys.Custom, settings.customMood?.look)
         val custom = settings.customMood
         if (custom == null) {
             remove(Keys.CUSTOM_SPEED)
@@ -92,7 +91,8 @@ class DataStoreSnowSettingsRepository(
             this[Keys.CUSTOM_TURBULENCE] = custom.turbulence
             this[Keys.CUSTOM_GUSTS] = custom.gusts
         }
-        writeLook(Keys.Adjustment, settings.moodAdjustment)
+        // Changes to built-in moods are gone (ADR-0010); drop what older builds stored.
+        writeLook(Keys.Adjustment, null)
         this[Keys.TIME_OF_DAY] = settings.timeOfDay.name
         this[Keys.LAB_OVERRIDE] = settings.lab.overrideMood
         this[Keys.LAB_SPEED] = settings.lab.speed
@@ -106,7 +106,7 @@ class DataStoreSnowSettingsRepository(
         this[Keys.LAB_QUALITY] = settings.lab.quality.name
     }
 
-    private fun MutablePreferences.writeLook(keys: Keys.Look, look: MoodAdjustment?) {
+    private fun MutablePreferences.writeLook(keys: Keys.Look, look: MoodLook?) {
         if (look == null) {
             remove(keys.intensity)
             remove(keys.size)
@@ -138,6 +138,7 @@ class DataStoreSnowSettingsRepository(
         val CUSTOM_LAYERS = intPreferencesKey("custom_mood_layers")
         val CUSTOM_TURBULENCE = floatPreferencesKey("custom_mood_turbulence")
         val CUSTOM_GUSTS = floatPreferencesKey("custom_mood_gusts")
+        /** Written by builds before built-in moods stopped being adjustable; only cleared. */
         val Adjustment = Look("adjust")
         val TIME_OF_DAY = stringPreferencesKey("time_of_day")
         val LAB_OVERRIDE = booleanPreferencesKey("lab_override")

@@ -19,7 +19,7 @@ class SnowConfigMapperTest {
     private fun config(mood: Mood) = config(SnowSettings(mood = MoodChoice.CUSTOM, customMood = mood))
 
     private fun Mood.withWind(angle: Int, strength: WindStrength) =
-        adjusted(adjustment.copy(windAngle = angle, windStrength = strength))
+        withLook(look.copy(windAngle = angle, windStrength = strength))
 
     @Test
     fun `levels span the tuning ranges from end to end`() {
@@ -71,10 +71,9 @@ class SnowConfigMapperTest {
     }
 
     @Test
-    fun `adjustments change the snow`() {
-        val settings = SnowSettings(mood = MoodChoice.HEAVY)
-        val denser = settings.copy(moodAdjustment = BuiltInMoods.HEAVY.adjustment.copy(intensity = 10))
-        assertEquals(SnowTuning.DensityRange.endInclusive, config(denser).density, 1e-4f)
+    fun `the own mood drives the snow while active`() {
+        val own = SnowSettings(mood = MoodChoice.CUSTOM, customMood = BuiltInMoods.HEAVY.copy(intensity = 10))
+        assertEquals(SnowTuning.DensityRange.endInclusive, config(own).density, 1e-4f)
     }
 
     @Test

@@ -11,26 +11,23 @@
     <string name="control_intensity">Intensity</string>
     <string name="control_wind">Wind</string>
 
-    <string name="mood_section">Mood</string>
     <string name="mood_first_snow">First snow</string>
     <string name="mood_fluff">Powder</string>
     <string name="mood_heavy">Heavy</string>
     <string name="mood_blizzard">Blizzard</string>
-    <string name="mood_custom">Your own</string>
+    <string name="mood_custom">My mood</string>
     <string name="hint_permission">Snowing needs your permission to draw over other apps</string>
     <string name="mood_intensity_description">Intensity %1$d of %2$d</string>
     <string name="flake_size">Flake size</string>
-    <string name="degrees" translatable="false">%1$d°</string>
     <string name="flake_size_s" translatable="false">S</string>
     <string name="flake_size_m" translatable="false">M</string>
     <string name="flake_size_l" translatable="false">L</string>
-    <string name="adjust">Adjust</string>
-    <string name="adjust_applies_to">changes apply to %1$s</string>
-    <string name="adjust_edited">%1$s · edited</string>
-    <string name="adjust_locked">Adjusting moods comes with Pro</string>
-    <string name="adjust_restore">Restore</string>
-    <string name="adjust_save_new">Save as new</string>
-    <string name="wind_strength">Wind strength</string>
+    <string name="own_mood">My mood</string>
+    <string name="own_mood_create">Create my mood</string>
+    <string name="own_mood_pro">comes with Pro</string>
+    <string name="wind_drag">drag the needle</string>
+    <string name="wind_direction">Wind direction</string>
+    <string name="level_of" translatable="false">%1$d/%2$d</string>
     <string name="wind_calm">Calm</string>
     <string name="wind_gentle">Gentle</string>
     <string name="wind_gusty">Gusty</string>

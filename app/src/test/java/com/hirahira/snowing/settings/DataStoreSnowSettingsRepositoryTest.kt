@@ -37,7 +37,6 @@ class DataStoreSnowSettingsRepositoryTest {
         val chosen = SnowSettings(
             mood = MoodChoice.CUSTOM,
             customMood = BuiltInMoods.BLIZZARD.copy(intensity = 5, flakeSize = FlakeSize.S, windAngle = 100),
-            moodAdjustment = MoodAdjustment(2, FlakeSize.L, windAngle = 10, WindStrength.GENTLE),
             timeOfDay = TimeOfDay.NIGHT,
             lab = LabSettings(overrideMood = true, speed = 9, layers = 2, quality = LabQuality.LOW),
         )
@@ -47,16 +46,26 @@ class DataStoreSnowSettingsRepositoryTest {
     }
 
     @Test
-    fun `clearing the adjustment and the slot removes them`() = runTest(UnconfinedTestDispatcher()) {
+    fun `clearing the slot removes it`() = runTest(UnconfinedTestDispatcher()) {
         val repository = DataStoreSnowSettingsRepository(store())
-        repository.update {
-            it.copy(customMood = BuiltInMoods.HEAVY, moodAdjustment = BuiltInMoods.FIRST_SNOW.adjustment.copy(intensity = 8))
-        }
-        repository.update { it.copy(customMood = null, moodAdjustment = null) }
+        repository.update { it.copy(customMood = BuiltInMoods.HEAVY) }
+        repository.update { it.copy(customMood = null) }
 
-        val read = repository.settings.first()
-        assertNull(read.customMood)
-        assertNull(read.moodAdjustment)
+        assertNull(repository.settings.first().customMood)
+    }
+
+    @Test
+    fun `changes to built-in moods from older builds are dropped`() = runTest(UnconfinedTestDispatcher()) {
+        val dataStore = store()
+        dataStore.edit {
+            it[stringPreferencesKey("mood")] = MoodChoice.HEAVY.key
+            it[intPreferencesKey("adjust_intensity")] = 1
+        }
+        val repository = DataStoreSnowSettingsRepository(dataStore)
+        assertEquals(BuiltInMoods.HEAVY, repository.settings.first().activeMood)
+
+        repository.update { it }
+        assertNull(dataStore.data.first()[intPreferencesKey("adjust_intensity")])
     }
 
     @Test
@@ -71,12 +80,12 @@ class DataStoreSnowSettingsRepositoryTest {
     fun `stored values out of range are brought back into range`() = runTest(UnconfinedTestDispatcher()) {
         val dataStore = store()
         dataStore.edit {
-            it[intPreferencesKey("adjust_intensity")] = 40
-            it[intPreferencesKey("adjust_wind_angle")] = 400
+            it[intPreferencesKey("custom_mood_intensity")] = 40
+            it[intPreferencesKey("custom_mood_wind_angle")] = 400
         }
 
-        val adjustment = DataStoreSnowSettingsRepository(dataStore).settings.first().moodAdjustment!!
-        assertEquals(Mood.LEVELS.last, adjustment.intensity)
-        assertEquals(40, adjustment.windAngle)
+        val own = DataStoreSnowSettingsRepository(dataStore).settings.first().customMood!!
+        assertEquals(Mood.LEVELS.last, own.intensity)
+        assertEquals(40, own.windAngle)
     }
 }

@@ -15,9 +15,8 @@ import kotlinx.coroutines.launch
  *     adb shell am start -n com.hirahira.snowing/.debug.PerfControlActivity \
  *         --ez snow true --es mood blizzard --ez bokeh true --es quality low
  *
- * `mood` takes a MoodChoice key and drops any adjustment. `override` with `speed`, `layers`,
- * `turbulence` and `gusts` replaces the mood's hidden parameters. `direction` (int, degrees
- * clockwise from up, as on the wind wheel) adjusts the active mood's wind.
+ * `mood` takes a MoodChoice key. `override` with `speed`, `layers`, `turbulence` and `gusts`
+ * replaces the mood's hidden parameters.
  *
  * Every extra is optional; only the ones given change. Guarded by the DUMP
  * permission, which adb shell holds and regular apps cannot get.
@@ -30,15 +29,8 @@ class PerfControlActivity : ComponentActivity() {
         val container = appContainer
         lifecycleScope.launch {
             container.settingsRepository.update { saved ->
-                val current = MoodChoice.fromKey(extras.getString(EXTRA_MOOD))
-                    ?.let { saved.copy(mood = it, moodAdjustment = null) }
-                    ?: saved
+                val current = MoodChoice.fromKey(extras.getString(EXTRA_MOOD))?.let(saved::choosing) ?: saved
                 current.copy(
-                    moodAdjustment = if (extras.containsKey(EXTRA_DIRECTION)) {
-                        current.activeMood.adjustment.copy(windAngle = extras.getInt(EXTRA_DIRECTION)).normalized()
-                    } else {
-                        current.moodAdjustment
-                    },
                     lab = current.lab.copy(
                         overrideMood = extras.booleanOr(EXTRA_OVERRIDE, current.lab.overrideMood),
                         speed = extras.intOr(EXTRA_SPEED, current.lab.speed),
@@ -73,7 +65,6 @@ class PerfControlActivity : ComponentActivity() {
     private companion object {
         const val EXTRA_SNOW = "snow"
         const val EXTRA_MOOD = "mood"
-        const val EXTRA_DIRECTION = "direction"
         const val EXTRA_OVERRIDE = "override"
         const val EXTRA_SPEED = "speed"
         const val EXTRA_LAYERS = "layers"

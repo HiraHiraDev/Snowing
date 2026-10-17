@@ -1,4 +1,4 @@
-package com.hirahira.snowing.feature.control
+package com.hirahira.snowing.feature.moods
 
 import com.hirahira.snowing.settings.BuiltInMoods
 import com.hirahira.snowing.settings.FlakeSize
@@ -30,7 +30,7 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ControlViewModelTest {
+class MoodsViewModelTest {
 
     private val settings = FakeSettingsRepository()
     private val entitlements = FakeEntitlements()
@@ -45,11 +45,14 @@ class ControlViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel(labEnabled: Boolean = false) =
-        ControlViewModel(settings, entitlements, labEnabled)
+        MoodsViewModel(settings, entitlements, labEnabled)
 
-    private fun TestScope.collect(vm: ControlViewModel) {
+    private fun TestScope.collect(vm: MoodsViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
+
+    /** The user's own mood, active: the only mood whose controls show. */
+    private val ownActive = SnowSettings(mood = MoodChoice.CUSTOM, customMood = BuiltInMoods.HEAVY)
 
     @Test
     fun `state reflects settings and choice`() = runTest {
@@ -61,16 +64,12 @@ class ControlViewModelTest {
         assertTrue(state.loaded)
         assertEquals(MoodChoice.BUILT_IN, state.moods.map { it.choice })
         assertEquals(listOf(MoodChoice.HEAVY), state.moods.filter { it.selected }.map { it.choice })
-        assertEquals(BuiltInMoods.HEAVY.intensity, state.moods.single { it.selected }.intensity)
         assertEquals(TimeOfDay.DUSK, state.timeOfDay)
-        val adjust = state.adjust!!
-        assertEquals(MoodChoice.HEAVY, adjust.mood)
-        assertFalse(adjust.edited)
-        assertEquals(BuiltInMoods.HEAVY.windAngle, adjust.windAngle)
+        assertEquals(OwnMoodUiState.CanCreate, state.ownMood)
     }
 
     @Test
-    fun `the custom mood is listed once it has been saved`() = runTest {
+    fun `the own mood is listed once it exists`() = runTest {
         settings.state.value = SnowSettings(customMood = BuiltInMoods.BLIZZARD)
         val vm = viewModel()
         collect(vm)
@@ -82,43 +81,61 @@ class ControlViewModelTest {
     fun `an empty custom slot cannot be chosen`() = runTest(main) {
         val vm = viewModel()
         collect(vm)
-        vm.onEvent(ControlEvent.MoodSelected(MoodChoice.CUSTOM))
+        vm.onEvent(MoodsEvent.MoodSelected(MoodChoice.CUSTOM))
 
         assertEquals(SnowSettings.DEFAULT_MOOD, settings.state.value.mood)
     }
 
     @Test
-    fun `adjusting changes the active mood and marks it edited`() = runTest(main) {
-        settings.state.value = SnowSettings(mood = MoodChoice.HEAVY)
+    fun `creating the own mood copies the active one and makes it active`() = runTest(main) {
+        settings.state.value = SnowSettings(mood = MoodChoice.BLIZZARD)
         val vm = viewModel()
         collect(vm)
-        vm.onEvent(ControlEvent.WindStrengthChanged(WindStrength.GUSTY))
+        vm.onEvent(MoodsEvent.CreateOwnMood)
 
         val written = settings.state.value
-        assertEquals(WindStrength.GUSTY, written.activeMood.windStrength)
-        assertEquals(BuiltInMoods.HEAVY.layers, written.activeMood.layers)
-        assertTrue(vm.uiState.value.adjust!!.edited)
+        assertEquals(MoodChoice.CUSTOM, written.mood)
+        assertEquals(BuiltInMoods.BLIZZARD, written.customMood)
+        assertTrue(vm.uiState.value.ownMood is OwnMoodUiState.Editing)
     }
 
     @Test
-    fun `adjusting back to the mood as designed is no change`() = runTest(main) {
-        settings.state.value = SnowSettings(mood = MoodChoice.HEAVY)
+    fun `built-in moods cannot be changed`() = runTest(main) {
+        settings.state.value = SnowSettings(mood = MoodChoice.HEAVY, customMood = BuiltInMoods.FIRST_SNOW)
         val vm = viewModel()
         collect(vm)
-        vm.onEvent(ControlEvent.FlakeSizeChanged(FlakeSize.L))
-        vm.onEvent(ControlEvent.FlakeSizeChanged(BuiltInMoods.HEAVY.flakeSize))
+        vm.onEvent(MoodsEvent.WindStrengthChanged(WindStrength.GUSTY))
+        vm.onEvent(MoodsEvent.IntensityChanged(1))
+        vm.onEvent(MoodsEvent.DragFinished)
 
-        assertNull(settings.state.value.moodAdjustment)
-        assertFalse(vm.uiState.value.adjust!!.edited)
+        assertEquals(BuiltInMoods.HEAVY, settings.state.value.activeMood)
+        assertEquals(BuiltInMoods.FIRST_SNOW, settings.state.value.customMood)
+        assertEquals(OwnMoodUiState.Hidden, vm.uiState.value.ownMood)
+    }
+
+    @Test
+    fun `changing the own mood keeps its hidden parameters`() = runTest(main) {
+        settings.state.value = ownActive
+        val vm = viewModel()
+        collect(vm)
+        vm.onEvent(MoodsEvent.WindStrengthChanged(WindStrength.GUSTY))
+        vm.onEvent(MoodsEvent.FlakeSizeChanged(FlakeSize.L))
+
+        val own = settings.state.value.customMood!!
+        assertEquals(WindStrength.GUSTY, own.windStrength)
+        assertEquals(FlakeSize.L, own.flakeSize)
+        assertEquals(BuiltInMoods.HEAVY.layers, own.layers)
+        assertEquals(BuiltInMoods.HEAVY.speed, own.speed)
     }
 
     @Test
     fun `levels and angles stay in range`() = runTest(main) {
+        settings.state.value = ownActive
         val vm = viewModel()
         collect(vm)
-        vm.onEvent(ControlEvent.IntensityChanged(42))
-        vm.onEvent(ControlEvent.WindAngleChanged(-90))
-        vm.onEvent(ControlEvent.SliderReleased)
+        vm.onEvent(MoodsEvent.IntensityChanged(42))
+        vm.onEvent(MoodsEvent.WindAngleChanged(-90))
+        vm.onEvent(MoodsEvent.DragFinished)
 
         val mood = settings.state.value.activeMood
         assertEquals(Mood.LEVELS.last, mood.intensity)
@@ -126,68 +143,37 @@ class ControlViewModelTest {
     }
 
     @Test
-    fun `restoring drops the changes`() = runTest(main) {
-        settings.state.value = SnowSettings(mood = MoodChoice.HEAVY)
+    fun `the wind arrow points to the nearest eighth of a turn`() = runTest(main) {
+        settings.state.value = ownActive
         val vm = viewModel()
         collect(vm)
-        vm.onEvent(ControlEvent.FlakeSizeChanged(FlakeSize.S))
-        vm.onEvent(ControlEvent.RestoreMood)
-
-        assertEquals(BuiltInMoods.HEAVY, settings.state.value.activeMood)
+        for ((angle, arrow) in listOf(200 to 180, 205 to 225, 350 to 0, 90 to 90)) {
+            vm.onEvent(MoodsEvent.WindAngleChanged(angle))
+            assertEquals(arrow, (vm.uiState.value.ownMood as OwnMoodUiState.Editing).windArrow)
+        }
     }
 
     @Test
-    fun `choosing another mood drops the changes`() = runTest(main) {
-        settings.state.value = SnowSettings(mood = MoodChoice.HEAVY)
-        val vm = viewModel()
-        collect(vm)
-        vm.onEvent(ControlEvent.FlakeSizeChanged(FlakeSize.S))
-        vm.onEvent(ControlEvent.MoodSelected(MoodChoice.BLIZZARD))
-        vm.onEvent(ControlEvent.MoodSelected(MoodChoice.HEAVY))
-
-        assertNull(settings.state.value.moodAdjustment)
-        assertEquals(BuiltInMoods.HEAVY, settings.state.value.activeMood)
-    }
-
-    @Test
-    fun `saving as new fills the custom slot with the adjusted mood and its hidden parameters`() = runTest(main) {
-        settings.state.value = SnowSettings(mood = MoodChoice.BLIZZARD)
-        val vm = viewModel()
-        collect(vm)
-        vm.onEvent(ControlEvent.FlakeSizeChanged(FlakeSize.S))
-        vm.onEvent(ControlEvent.SaveMoodAsNew)
-
-        val written = settings.state.value
-        assertEquals(MoodChoice.CUSTOM, written.mood)
-        assertNull(written.moodAdjustment)
-        assertEquals(BuiltInMoods.BLIZZARD.copy(flakeSize = FlakeSize.S), written.customMood)
-        assertEquals(MoodChoice.CUSTOM, vm.uiState.value.moods.single { it.selected }.choice)
-    }
-
-    @Test
-    fun `without Pro moods are picked but adjusting is locked`() = runTest(main) {
+    fun `without Pro moods are picked but no own mood is made`() = runTest(main) {
         entitlements.hasPro.value = false
         val vm = viewModel()
         collect(vm)
-        vm.onEvent(ControlEvent.MoodSelected(MoodChoice.BLIZZARD))
-        vm.onEvent(ControlEvent.IntensityChanged(2))
-        vm.onEvent(ControlEvent.SliderReleased)
-        vm.onEvent(ControlEvent.SaveMoodAsNew)
+        assertEquals(OwnMoodUiState.Locked, vm.uiState.value.ownMood)
+
+        vm.onEvent(MoodsEvent.MoodSelected(MoodChoice.BLIZZARD))
+        vm.onEvent(MoodsEvent.CreateOwnMood)
 
         assertEquals(MoodChoice.BLIZZARD, settings.state.value.mood)
-        assertEquals(BuiltInMoods.BLIZZARD, settings.state.value.activeMood)
         assertNull(settings.state.value.customMood)
-        val adjust = vm.uiState.value.adjust!!
-        assertTrue(adjust.locked)
-        assertEquals(BuiltInMoods.BLIZZARD.intensity, adjust.intensity)
     }
 
     @Test
     fun `slider changes are persisted after the throttle`() = runTest(main) {
+        settings.state.value = ownActive
         val vm = viewModel(labEnabled = true)
-        vm.onEvent(ControlEvent.IntensityChanged(9))
-        vm.onEvent(ControlEvent.LayersChanged(5))
-        advanceTimeBy(ControlViewModel.SAVE_THROTTLE_MS + 1)
+        vm.onEvent(MoodsEvent.IntensityChanged(9))
+        vm.onEvent(MoodsEvent.LayersChanged(5))
+        advanceTimeBy(MoodsViewModel.SAVE_THROTTLE_MS + 1)
 
         assertEquals(9, settings.state.value.activeMood.intensity)
         assertEquals(5, settings.state.value.lab.layers)
@@ -195,39 +181,41 @@ class ControlViewModelTest {
 
     @Test
     fun `dragging shows every value at once but writes at most once per throttle`() = runTest(main) {
+        settings.state.value = ownActive
         val vm = viewModel()
         collect(vm)
         // One second of dragging the wind needle at 60 Hz.
         for (frame in 1..60) {
             val angle = frame * 6
-            vm.onEvent(ControlEvent.WindAngleChanged(angle))
-            assertEquals(angle % 360, vm.uiState.value.adjust?.windAngle)
+            vm.onEvent(MoodsEvent.WindAngleChanged(angle))
+            assertEquals(angle % 360, (vm.uiState.value.ownMood as OwnMoodUiState.Editing).windAngle)
             advanceTimeBy(16)
         }
 
-        val maxWrites = (60 * 16 / ControlViewModel.SAVE_THROTTLE_MS + 1).toInt()
+        val maxWrites = (60 * 16 / MoodsViewModel.SAVE_THROTTLE_MS + 1).toInt()
         assertTrue("wrote ${settings.writes} times", settings.writes <= maxWrites)
     }
 
     @Test
     fun `releasing a slider writes the final value at once`() = runTest(main) {
+        settings.state.value = ownActive
         val vm = viewModel()
         collect(vm)
-        vm.onEvent(ControlEvent.IntensityChanged(5))
-        vm.onEvent(ControlEvent.IntensityChanged(7))
-        vm.onEvent(ControlEvent.SliderReleased)
+        vm.onEvent(MoodsEvent.IntensityChanged(5))
+        vm.onEvent(MoodsEvent.IntensityChanged(7))
+        vm.onEvent(MoodsEvent.DragFinished)
 
         assertEquals(7, settings.state.value.activeMood.intensity)
         assertEquals(1, settings.writes)
-        assertEquals(7, vm.uiState.value.adjust?.intensity)
+        assertEquals(7, (vm.uiState.value.ownMood as OwnMoodUiState.Editing).intensity)
     }
 
     @Test
     fun `switches are written at once`() = runTest(main) {
         val vm = viewModel(labEnabled = true)
         collect(vm)
-        vm.onEvent(ControlEvent.HudToggled(true))
-        vm.onEvent(ControlEvent.MoodOverrideToggled(true))
+        vm.onEvent(MoodsEvent.HudToggled(true))
+        vm.onEvent(MoodsEvent.MoodOverrideToggled(true))
 
         assertTrue(settings.state.value.lab.showHud)
         assertTrue(settings.state.value.lab.overrideMood)
@@ -251,7 +239,7 @@ class ControlViewModelTest {
         settings.state.value = SnowSettings(mood = MoodChoice.HEAVY)
         val vm = viewModel(labEnabled = true)
         collect(vm)
-        vm.onEvent(ControlEvent.MoodOverrideToggled(true))
+        vm.onEvent(MoodsEvent.MoodOverrideToggled(true))
 
         val lab = settings.state.value.lab
         assertEquals(BuiltInMoods.HEAVY.speed, lab.speed)
@@ -264,8 +252,8 @@ class ControlViewModelTest {
     fun `an outside change shows once no edit is pending`() = runTest(main) {
         val vm = viewModel(labEnabled = true)
         collect(vm)
-        vm.onEvent(ControlEvent.TurbulenceChanged(0.2f))
-        vm.onEvent(ControlEvent.SliderReleased)
+        vm.onEvent(MoodsEvent.TurbulenceChanged(0.2f))
+        vm.onEvent(MoodsEvent.DragFinished)
 
         settings.state.value = settings.state.value.copy(mood = MoodChoice.BLIZZARD) // e.g. a tile or the schedule
         assertEquals(MoodChoice.BLIZZARD, vm.uiState.value.moods.single { it.selected }.choice)
@@ -278,7 +266,7 @@ class ControlViewModelTest {
             override val settings = MutableSharedFlow<SnowSettings>()
             override suspend fun update(transform: (SnowSettings) -> SnowSettings) = Unit
         }
-        val vm = ControlViewModel(neverLoads, entitlements, labEnabled = false)
+        val vm = MoodsViewModel(neverLoads, entitlements, labEnabled = false)
         collect(vm)
 
         assertFalse(vm.uiState.value.loaded)

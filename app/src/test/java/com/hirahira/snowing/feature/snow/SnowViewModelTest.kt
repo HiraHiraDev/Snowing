@@ -99,16 +99,16 @@ class SnowViewModelTest {
     }
 
     @Test
-    fun `shows the active mood with its adjustments`() = runTest {
+    fun `shows the active mood`() = runTest {
         settings.state.value = SnowSettings(
-            mood = MoodChoice.HEAVY,
-            moodAdjustment = BuiltInMoods.HEAVY.adjustment.copy(intensity = 2, flakeSize = FlakeSize.L),
+            mood = MoodChoice.CUSTOM,
+            customMood = BuiltInMoods.HEAVY.copy(intensity = 2, flakeSize = FlakeSize.L),
         )
         val vm = viewModel()
         collect(vm)
 
         val state = vm.uiState.value
-        assertEquals(MoodChoice.HEAVY, state.mood)
+        assertEquals(MoodChoice.CUSTOM, state.mood)
         assertEquals(2, state.intensity)
     }
 

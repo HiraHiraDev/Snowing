@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import com.hirahira.snowing.ui.theme.SnowingTheme
 
@@ -99,22 +100,15 @@ fun Notice(
     }
 }
 
-/** Darkens (or, on a light sky, lightens) the scene behind long content, fading in from the top. */
+/**
+ * Darkens (or, on a light sky, lightens) the scene behind long content: nothing at the top,
+ * full strength at the bottom, on an eased curve so it has no visible edge.
+ */
 @Composable
 fun Scrim(modifier: Modifier = Modifier) {
-    val colors = SnowingTheme.colors
-    Box(
-        modifier.background(
-            Brush.verticalGradient(
-                0f to colors.scrimMid.copy(alpha = 0f),
-                SCRIM_MID_AT to colors.scrimMid,
-                1f to colors.scrimEnd,
-            ),
-        ),
-    )
+    val scrim = SnowingTheme.colors.scrim
+    Box(modifier.background(Brush.verticalGradient(colorStops = eased(scrim.copy(alpha = 0f), scrim))))
 }
-
-private const val SCRIM_MID_AT = 0.3f
 
 /**
  * Makes the content invisible above [start] and fades it in over [length] below, on an eased
@@ -126,7 +120,7 @@ private fun Modifier.fadeOutAbove(start: Dp, length: Dp): Modifier = this
     .drawWithCache {
         val startPx = start.toPx()
         val mask = Brush.verticalGradient(
-            colorStops = EasedMask,
+            colorStops = MaskStops,
             startY = startPx,
             endY = startPx + length.toPx(),
         )
@@ -136,10 +130,16 @@ private fun Modifier.fadeOutAbove(start: Dp, length: Dp): Modifier = this
         }
     }
 
-// Mask opacity along the fade, smoothstep-shaped: no hard start or end to catch the eye.
-// Only the alpha matters; the color is ignored by DstIn.
-private const val MASK_STEPS = 8
-private val EasedMask: Array<Pair<Float, Color>> = Array(MASK_STEPS + 1) { i ->
-    val t = i.toFloat() / MASK_STEPS
-    t to Color.Black.copy(alpha = t * t * (3 - 2 * t))
+// Only the mask's alpha matters; the color is ignored by DstIn.
+private val MaskStops = eased(Color.Black.copy(alpha = 0f), Color.Black)
+
+/**
+ * Color stops from [from] to [to] along a smoothstep curve: it starts and ends gently, so a
+ * gradient shows no line where it begins or ends.
+ */
+private fun eased(from: Color, to: Color): Array<Pair<Float, Color>> = Array(EASE_STEPS + 1) { i ->
+    val t = i.toFloat() / EASE_STEPS
+    t to lerp(from, to, t * t * (3 - 2 * t))
 }
+
+private const val EASE_STEPS = 8

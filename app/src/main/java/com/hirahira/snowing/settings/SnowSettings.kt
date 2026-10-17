@@ -6,29 +6,34 @@ package com.hirahira.snowing.settings
  */
 data class SnowSettings(
     val mood: MoodChoice = DEFAULT_MOOD,
-    /** The one custom slot, filled by "Save as new"; null until then. */
+    /** The user's own mood (Pro, one slot in v1); null until they create it. */
     val customMood: Mood? = null,
-    /** Changes to the chosen mood ("edited"); choosing another mood drops them. */
-    val moodAdjustment: MoodAdjustment? = null,
     /** Colors the app's background only, never the snow. */
     val timeOfDay: TimeOfDay = TimeOfDay.AUTO,
     val lab: LabSettings = LabSettings(),
 ) {
-    /** The chosen mood as designed; an empty custom slot falls back to the default mood. */
-    val baseMood: Mood get() = BuiltInMoods.of(mood) ?: customMood ?: BuiltInMoods.of(DEFAULT_MOOD)!!
+    /** Built-in moods never change; an empty custom slot falls back to the default mood. */
+    val activeMood: Mood get() = BuiltInMoods.of(mood) ?: customMood ?: BuiltInMoods.of(DEFAULT_MOOD)!!
 
-    val activeMood: Mood get() = moodAdjustment?.let(baseMood::adjusted) ?: baseMood
-
-    val isMoodAdjusted: Boolean get() = moodAdjustment != null
+    val isOwnMoodActive: Boolean get() = mood == MoodChoice.CUSTOM && customMood != null
 
     /** What can be picked: the built-in moods, then the custom one once it has been saved. */
     val moodChoices: List<MoodChoice>
         get() = MoodChoice.BUILT_IN + listOfNotNull(MoodChoice.CUSTOM.takeIf { customMood != null })
 
-    /** Picking a mood drops changes to the previous one (ADR-0010); an empty custom slot cannot be picked. */
-    fun choosing(choice: MoodChoice): SnowSettings {
-        if (choice !in moodChoices) return this
-        return copy(mood = choice, moodAdjustment = null)
+    /** An empty custom slot cannot be picked. */
+    fun choosing(choice: MoodChoice): SnowSettings = if (choice in moodChoices) copy(mood = choice) else this
+
+    /**
+     * The user's own mood starts as a copy of what is falling now, hidden parameters included,
+     * and becomes the active one, so the snow does not change until they adjust it.
+     */
+    fun creatingOwnMood(): SnowSettings = copy(customMood = activeMood, mood = MoodChoice.CUSTOM)
+
+    /** Changes the user's own mood while it is the active one; otherwise there is nothing to change. */
+    fun editingOwnMood(transform: (MoodLook) -> MoodLook): SnowSettings {
+        val own = customMood?.takeIf { isOwnMoodActive } ?: return this
+        return copy(customMood = own.withLook(transform(own.look)))
     }
 
     companion object {

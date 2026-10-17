@@ -6,50 +6,131 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import com.hirahira.snowing.ui.theme.SnowingTheme
 
 // Pickers take the options themselves (an enum's entries, a list of moods) rather than
 // indexes, so a screen never maps positions back to values.
 
-/** A few mutually exclusive options side by side under a name, e.g. flake size S / M / L. */
+/**
+ * A few mutually exclusive options side by side, optionally under a name (design 6a): equal
+ * cells over a line, the picked one in the accent color and underlined.
+ */
 @Composable
 fun <T> OptionPicker(
-    label: String,
     options: List<T>,
     selected: T,
     optionLabel: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
+    label: String? = null,
     enabled: Boolean = true,
 ) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SnowingTheme.spacing.s)) {
-        ControlLabel(label)
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            options.forEachIndexed { index, option ->
-                SegmentedButton(
-                    selected = option == selected,
-                    onClick = { onSelect(option) },
-                    enabled = enabled,
-                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+    val colors = SnowingTheme.colors
+    // Five cells are narrow, so their names step down a size.
+    val style = if (options.size > ROOMY_OPTIONS) SnowingTheme.typography.metaStrong else SnowingTheme.typography.label
+    Column(modifier.fillMaxWidth().enabledLook(enabled)) {
+        if (label != null) ControlLabel(label)
+        Box(Modifier.fillMaxWidth()) {
+            HorizontalDivider(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                thickness = SnowingTheme.sizes.line,
+                color = colors.line,
+            )
+            Row(Modifier.fillMaxWidth().selectableGroup()) {
+                for (option in options) {
+                    val picked = option == selected
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(SnowingTheme.sizes.touchTarget)
+                            .selectable(selected = picked, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(option) }),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = optionLabel(option),
+                            style = style,
+                            color = if (picked) colors.accentText else colors.inkSoft,
+                            maxLines = 1,
+                        )
+                        if (picked) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth(UNDERLINE_WIDTH)
+                                    .height(SnowingTheme.sizes.optionUnderline)
+                                    .background(colors.accentFill),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private const val ROOMY_OPTIONS = 3
+
+/** How much of a cell the picked option's underline spans. */
+private const val UNDERLINE_WIDTH = 0.64f
+
+/**
+ * Options shown as dots of different sizes beside a name, e.g. flake size. The picked dot
+ * takes the accent color and a soft ring.
+ */
+@Composable
+fun <T> DotPicker(
+    label: String,
+    options: List<T>,
+    selected: T,
+    dotSize: (T) -> Dp,
+    optionLabel: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val colors = SnowingTheme.colors
+    val sizes = SnowingTheme.sizes
+    Row(
+        modifier = modifier.fillMaxWidth().enabledLook(enabled),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ControlLabel(label, Modifier.weight(1f))
+        Row(Modifier.selectableGroup()) {
+            for (option in options) {
+                val picked = option == selected
+                val description = optionLabel(option)
+                Box(
+                    modifier = Modifier
+                        .size(sizes.touchTarget)
+                        .selectable(selected = picked, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(option) })
+                        .semantics { contentDescription = description },
+                    contentAlignment = Alignment.Center,
                 ) {
-                    ControlLabel(optionLabel(option))
+                    Box(
+                        Modifier
+                            .size(dotSize(option))
+                            .drawBehind {
+                                if (picked) drawCircle(colors.accentHalo, radius = size.minDimension / 2 + sizes.dotHalo.toPx())
+                            }
+                            .background(if (picked) colors.accentFill else colors.tickDim, SnowingTheme.shapes.circle),
+                    )
                 }
             }
         }

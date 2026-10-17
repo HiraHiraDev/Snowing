@@ -27,13 +27,14 @@ data class SnowingColors(
     val tickDim: Color,
     val accentText: Color,
     val accentFill: Color,
+    /** Soft ring around a picked dot. */
+    val accentHalo: Color,
     val ctaFill: Color,
     val ctaDot: Color,
     /** Light around the idle start button: amber on a dark sky, a soft shadow on a light one. */
     val ctaGlow: Color,
-    /** Behind long content over the scene: fades in from transparent to [scrimMid], then [scrimEnd]. */
-    val scrimMid: Color,
-    val scrimEnd: Color,
+    /** Behind long content over the scene, at its strongest; it fades in from transparent above. */
+    val scrim: Color,
     /** Text on the light snowdrift, whatever the sky. */
     val onDrift: Color,
     val onDriftSoft: Color,
@@ -66,11 +67,11 @@ data class SnowingColors(
                 tickDim = ink.copy(alpha = if (light) 0.35f else 0.40f),
                 accentText = if (light) Fixed.AmberDeepText else Fixed.AmberText,
                 accentFill = if (light) Fixed.AmberDeep else Fixed.Amber,
+                accentHalo = Fixed.Amber.copy(alpha = 0.22f),
                 ctaFill = if (light) Fixed.InkDark else Fixed.Amber,
                 ctaDot = if (light) Fixed.Amber else Fixed.InkOnAmber,
                 ctaGlow = if (light) Fixed.InkDark.copy(alpha = 0.3f) else Fixed.Amber.copy(alpha = 0.55f),
-                scrimMid = if (light) Fixed.ScrimLight.copy(alpha = 0.86f) else Fixed.ScrimDark.copy(alpha = 0.82f),
-                scrimEnd = if (light) Fixed.ScrimLight.copy(alpha = 0.94f) else Fixed.ScrimDark.copy(alpha = 0.90f),
+                scrim = if (light) Fixed.ScrimLight.copy(alpha = 0.94f) else Fixed.ScrimDark.copy(alpha = 0.90f),
                 onDrift = Fixed.InkOnAmber,
                 onDriftSoft = Fixed.InkOnDriftSoft,
                 house = Fixed.House,
@@ -132,6 +133,33 @@ data class SnowingSizes(
     val ctaGlow: Dp = 48.dp,
     /** Between the start / stop button and its label. */
     val ctaGap: Dp = 20.dp,
+    /** Intensity ruler: a tall lit mark per level reached, a short dim one above. */
+    val rulerLitWidth: Dp = 3.dp,
+    val rulerLitHeight: Dp = 28.dp,
+    val rulerDimWidth: Dp = 2.dp,
+    val rulerDimHeight: Dp = 12.dp,
+    val rulerBottomPadding: Dp = 8.dp,
+    /** How far the ruler's cells reach past the screen margin, so the end marks line up with text. */
+    val rulerOverhang: Dp = 6.dp,
+    /** Wind dial: a ring with four ticks, a needle with a round head, a hub in the middle. */
+    val dial: Dp = 88.dp,
+    val dialRing: Dp = 1.5.dp,
+    val dialTick: Dp = 7.dp,
+    val dialTickInset: Dp = 5.dp,
+    val needleWidth: Dp = 2.dp,
+    val needleLength: Dp = 33.dp,
+    val needleHead: Dp = 10.dp,
+    val dialHub: Dp = 8.dp,
+    val directionArrow: Dp = 18.dp,
+    /** Under the picked option of a row of options. */
+    val optionUnderline: Dp = 2.dp,
+    /** Flake size dots, small to large, and the ring around the picked one. */
+    val dotSmall: Dp = 8.dp,
+    val dotMedium: Dp = 13.dp,
+    val dotLarge: Dp = 20.dp,
+    val dotHalo: Dp = 5.dp,
+    /** The scrim behind the Moods page, measured up from the bottom; it fades in over all of it. */
+    val moodsScrim: Dp = 640.dp,
     /** Marks the active page tab. */
     val tabDot: Dp = 5.dp,
     /** Content scrolling up under the tabs fades out over this distance. */
@@ -171,6 +199,8 @@ data class SnowingTypography(
     val label: TextStyle,
     /** A quiet tip on how to use a screen. */
     val hint: TextStyle,
+    /** The smallest explanation, e.g. "drag the needle". */
+    val note: TextStyle,
     /** Actions shown as text, e.g. "Restore". */
     val action: TextStyle,
     val meta: TextStyle,

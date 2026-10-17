@@ -12,36 +12,32 @@ import org.junit.Test
 class ProGateTest {
 
     private val saved = SnowSettings(mood = MoodChoice.HEAVY)
-    private val adjusted = saved.copy(
-        moodAdjustment = BuiltInMoods.HEAVY.adjustment.copy(intensity = 9),
-        timeOfDay = TimeOfDay.DUSK,
-    )
-    private val savedAsNew = saved.copy(mood = MoodChoice.CUSTOM, customMood = adjusted.activeMood)
+    private val withOwn = saved.creatingOwnMood().copy(timeOfDay = TimeOfDay.DUSK)
 
     @Test
     fun `with Pro everything is written`() {
-        assertEquals(adjusted, ProGate.persistable(adjusted, saved, hasPro = true))
-        assertEquals(savedAsNew, ProGate.persistable(savedAsNew, saved, hasPro = true))
+        assertEquals(withOwn, ProGate.persistable(withOwn, saved, hasPro = true))
     }
 
     @Test
-    fun `without Pro moods cannot be adjusted`() {
-        assertFalse(ProGate.canAdjustMoods(hasPro = false))
-        val written = ProGate.persistable(adjusted, saved, hasPro = false)
-        assertNull(written.moodAdjustment)
+    fun `without Pro no own mood is made but free settings are written`() {
+        assertFalse(ProGate.canOwnMood(hasPro = false))
+        val written = ProGate.persistable(withOwn, saved, hasPro = false)
+        assertEquals(MoodChoice.HEAVY, written.mood)
+        assertNull(written.customMood)
         assertEquals(TimeOfDay.DUSK, written.timeOfDay)
     }
 
     @Test
-    fun `without Pro nothing is saved as a new mood`() {
-        val written = ProGate.persistable(savedAsNew, saved, hasPro = false)
-        assertEquals(MoodChoice.HEAVY, written.mood)
-        assertNull(written.customMood)
+    fun `without Pro an own mood is not changed`() {
+        val own = SnowSettings(mood = MoodChoice.CUSTOM, customMood = BuiltInMoods.HEAVY)
+        val changed = own.editingOwnMood { it.copy(intensity = 1) }
+        assertEquals(own.customMood, ProGate.persistable(changed, own, hasPro = false).customMood)
     }
 
     @Test
-    fun `without Pro a built-in mood is still picked and old changes can be dropped`() {
-        val picked = adjusted.copy(mood = MoodChoice.BLIZZARD, moodAdjustment = null)
-        assertEquals(picked, ProGate.persistable(picked, adjusted, hasPro = false))
+    fun `without Pro a built-in mood is still picked`() {
+        val picked = saved.copy(mood = MoodChoice.BLIZZARD)
+        assertEquals(picked, ProGate.persistable(picked, saved, hasPro = false))
     }
 }

@@ -52,6 +52,18 @@ fun Hint(text: String, modifier: Modifier = Modifier) {
     Text(text = text, modifier = modifier, style = SnowingTheme.typography.hint, color = SnowingTheme.colors.inkSoft)
 }
 
+/** A value that stands for itself, set large, e.g. the wind's "gentle". */
+@Composable
+fun LargeValue(text: String, modifier: Modifier = Modifier) {
+    Text(text = text, modifier = modifier, style = SnowingTheme.typography.valueLarge)
+}
+
+/** The smallest explanation under a control, e.g. "drag the needle". */
+@Composable
+fun Note(text: String, modifier: Modifier = Modifier) {
+    Text(text = text, modifier = modifier, style = SnowingTheme.typography.note, color = SnowingTheme.colors.inkSoft)
+}
+
 /** Secondary explanation under a title or control, e.g. "changes apply to Heavy". */
 @Composable
 fun Caption(text: String, modifier: Modifier = Modifier) {
@@ -80,11 +92,12 @@ fun TextAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
+    enabled: Boolean = true,
 ) {
     Box(
         modifier = modifier
             .heightIn(min = SnowingTheme.sizes.touchTarget)
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.CenterStart,
     ) {
         Text(

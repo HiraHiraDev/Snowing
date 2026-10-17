@@ -1,5 +1,6 @@
 package com.hirahira.snowing.ui.theme
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -50,7 +51,10 @@ fun SnowingTheme(
         LocalShapes provides shapes,
         LocalTypography provides typography,
     ) {
-        MaterialTheme(colorScheme = colors.toMaterialColorScheme(), content = content)
+        MaterialTheme(colorScheme = colors.toMaterialColorScheme()) {
+            // Inside MaterialTheme, which would otherwise provide its ripple.
+            CompositionLocalProvider(LocalIndication provides PressFade, content = content)
+        }
     }
 }
 
