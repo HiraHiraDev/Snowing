@@ -219,6 +219,31 @@ class ControlViewModelTest {
     }
 
     @Test
+    fun `without the override the lab shows the active mood's hidden parameters`() = runTest(main) {
+        settings.state.value = SnowSettings(mood = MoodChoice.BLIZZARD)
+        val vm = viewModel(labEnabled = true)
+        collect(vm)
+
+        val lab = vm.uiState.value.lab!!
+        assertEquals(BuiltInMoods.BLIZZARD.layers, lab.layers)
+        assertEquals(BuiltInMoods.BLIZZARD.turbulence, lab.turbulence)
+        assertEquals(BuiltInMoods.BLIZZARD.gusts, lab.gusts)
+    }
+
+    @Test
+    fun `turning the override on starts from the active mood`() = runTest(main) {
+        settings.state.value = SnowSettings(mood = MoodChoice.HEAVY)
+        val vm = viewModel(labEnabled = true)
+        collect(vm)
+        vm.onEvent(ControlEvent.MoodOverrideToggled(true))
+
+        val lab = settings.state.value.lab
+        assertEquals(BuiltInMoods.HEAVY.layers, lab.layers)
+        assertEquals(BuiltInMoods.HEAVY.turbulence, lab.turbulence)
+        assertEquals(BuiltInMoods.HEAVY.gusts, lab.gusts)
+    }
+
+    @Test
     fun `an outside change shows once no edit is pending`() = runTest(main) {
         val vm = viewModel(labEnabled = true)
         collect(vm)

@@ -85,7 +85,7 @@ class ControlViewModel(
             is ControlEvent.WindDirectionChanged -> edit {
                 it.copy(windDirection = event.value.coerceIn(-SnowSettings.MAX_WIND_DIRECTION, SnowSettings.MAX_WIND_DIRECTION))
             }
-            is ControlEvent.MoodOverrideToggled -> editLab(now = true) { it.copy(overrideMood = event.enabled) }
+            is ControlEvent.MoodOverrideToggled -> edit(now = true) { it.withMoodOverride(event.enabled) }
             is ControlEvent.LayersChanged -> editLab { it.copy(layers = event.value) }
             is ControlEvent.TurbulenceChanged -> editLab { it.copy(turbulence = event.value) }
             is ControlEvent.GustsChanged -> editLab { it.copy(gusts = event.value) }
@@ -148,12 +148,27 @@ class ControlViewModel(
         wind = wind,
     )
 
+    // Tuning starts from what is falling now, so turning the override on changes nothing until a slider moves.
+    private fun SnowSettings.withMoodOverride(enabled: Boolean): SnowSettings {
+        if (!enabled) return copy(lab = lab.copy(overrideMood = false))
+        val mood = activeMood
+        return copy(
+            lab = lab.copy(
+                overrideMood = true,
+                layers = mood.layers,
+                turbulence = mood.turbulence,
+                gusts = mood.gusts,
+            ),
+        )
+    }
+
+    // Without the override the disabled sliders show the active mood's values, the ones actually in use.
     private fun SnowSettings.toLabUiState() = LabUiState(
         windDirection = windDirection,
         overrideMood = lab.overrideMood,
-        layers = lab.layers,
-        turbulence = lab.turbulence,
-        gusts = lab.gusts,
+        layers = if (lab.overrideMood) lab.layers else activeMood.layers,
+        turbulence = if (lab.overrideMood) lab.turbulence else activeMood.turbulence,
+        gusts = if (lab.overrideMood) lab.gusts else activeMood.gusts,
         showHud = lab.showHud,
         showTracer = lab.showTracer,
         foreground = lab.foreground,
