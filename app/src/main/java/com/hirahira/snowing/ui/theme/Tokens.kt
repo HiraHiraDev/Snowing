@@ -158,6 +158,13 @@ data class SnowingSizes(
     val dotMedium: Dp = 13.dp,
     val dotLarge: Dp = 20.dp,
     val dotHalo: Dp = 5.dp,
+    /** Bar chart: thin rounded bars in a fixed-height row; an empty day keeps a stub. */
+    val chartHeight: Dp = 64.dp,
+    val barWidth: Dp = 3.dp,
+    val barStub: Dp = 3.dp,
+    val chartLabelGap: Dp = 10.dp,
+    /** Width of each bar's column, so a bar and its label share one centre. */
+    val labelColumn: Dp = 14.dp,
     /** The scrim behind the Moods page, measured up from the bottom; it fades in over all of it. */
     val moodsScrim: Dp = 640.dp,
     /** Marks the active page tab. */
@@ -201,6 +208,8 @@ data class SnowingTypography(
     val hint: TextStyle,
     /** The smallest explanation, e.g. "drag the needle". */
     val note: TextStyle,
+    /** Labels along a chart, e.g. the days under the week's bars. */
+    val axis: TextStyle,
     /** Actions shown as text, e.g. "Restore". */
     val action: TextStyle,
     val meta: TextStyle,

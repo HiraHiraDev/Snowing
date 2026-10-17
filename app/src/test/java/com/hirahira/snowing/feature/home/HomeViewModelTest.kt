@@ -1,6 +1,7 @@
 package com.hirahira.snowing.feature.home
 
 import com.hirahira.snowing.clock.WallClock
+import com.hirahira.snowing.clock.millisToNextMinute
 import com.hirahira.snowing.settings.SnowSettings
 import com.hirahira.snowing.settings.TimeOfDay
 import com.hirahira.snowing.testing.FakeSettingsRepository
@@ -18,6 +19,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import java.time.LocalDate
 import java.time.LocalTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -35,6 +37,8 @@ class HomeViewModelTest {
     /** Starts at [start] and moves with the test's virtual time. */
     private fun TestScope.clockFrom(start: LocalTime) = object : WallClock {
         override fun now(): LocalTime = start.plusNanos(testScheduler.currentTime * 1_000_000)
+
+        override fun today(): LocalDate = LocalDate.of(2026, 10, 17)
     }
 
     private fun TestScope.collect(vm: HomeViewModel) {
@@ -67,7 +71,7 @@ class HomeViewModelTest {
 
     @Test
     fun `the wait reaches exactly the next full minute`() {
-        assertEquals(60_000L, SkyHour.millisToNextMinute(LocalTime.of(8, 0)))
-        assertEquals(500L, SkyHour.millisToNextMinute(LocalTime.of(8, 0, 59, 500_000_000)))
+        assertEquals(60_000L, millisToNextMinute(LocalTime.of(8, 0)))
+        assertEquals(500L, millisToNextMinute(LocalTime.of(8, 0, 59, 500_000_000)))
     }
 }

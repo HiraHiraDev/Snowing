@@ -7,18 +7,15 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hirahira.snowing.appContainer
 import com.hirahira.snowing.clock.WallClock
+import com.hirahira.snowing.clock.minutes
 import com.hirahira.snowing.settings.SnowSettingsRepository
 import com.hirahira.snowing.settings.TimeOfDay
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import java.time.LocalTime
 
 /** The shell around the three pages: today only the sky of the shared background. */
 class HomeViewModel(
@@ -26,18 +23,9 @@ class HomeViewModel(
     private val clock: WallClock,
 ) : ViewModel() {
 
-    // Ticks only while the UI collects, so a backgrounded app does not wake up every minute.
-    private val minutes: Flow<LocalTime> = flow {
-        while (true) {
-            val now = clock.now()
-            emit(now)
-            delay(SkyHour.millisToNextMinute(now))
-        }
-    }
-
     val uiState: StateFlow<HomeUiState> = combine(
         settingsRepository.settings.map { it.timeOfDay }.distinctUntilChanged(),
-        minutes,
+        clock.minutes(),
     ) { timeOfDay, now -> HomeUiState(skyHour = SkyHour.of(timeOfDay, now)) }
         .distinctUntilChanged()
         // Auto until the store answers: right for most users, and the store is quick.

@@ -6,6 +6,16 @@
     <string name="tab_snow">Snow</string>
     <string name="tab_moods">Moods</string>
 
+
+    <string name="stats_eyebrow">This week</string>
+    <string name="stats_caption">of snow on your screen</string>
+    <string name="stats_today">snow today</string>
+    <string name="stats_week">this week</string>
+    <string name="stats_chart_description">Snow per day this week: %1$s</string>
+    <string name="duration_h">%1$d h</string>
+    <string name="duration_m">%1$d min</string>
+    <string name="duration_hm">%1$d h %2$d min</string>
+
     <string name="control_start">Let it snow</string>
     <string name="control_stop">Make it stop</string>
     <string name="control_intensity">Intensity</string>

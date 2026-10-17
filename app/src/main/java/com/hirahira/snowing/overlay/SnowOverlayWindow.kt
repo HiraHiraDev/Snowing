@@ -50,6 +50,10 @@ internal class SnowOverlayWindow(
     /** True while nothing is drawn: screen off or too hot. */
     val isPaused: Boolean get() = view.isPaused
 
+    /** Told whenever the snow starts or stops being drawn (attached, screen on, not too hot). */
+    var onVisibleChanged: ((Boolean) -> Unit)? = null
+    private var visible = false
+
     private val signalListener = object : DeviceSignals.Listener {
         override fun onPowerSaveChanged(enabled: Boolean) {
             quality.powerSave = enabled
@@ -74,6 +78,7 @@ internal class SnowOverlayWindow(
         windowManager.addView(view, layoutParams())
         attached = true
         signals.start(signalListener)
+        updateVisible()
     }
 
     fun detach() {
@@ -81,6 +86,7 @@ internal class SnowOverlayWindow(
         signals.stop()
         windowManager.removeViewImmediate(view)
         attached = false
+        updateVisible()
     }
 
     /** New flakes take [newSettings]; the lab's instant mode also re-derives falling ones. */
@@ -140,6 +146,14 @@ internal class SnowOverlayWindow(
 
     private fun updatePaused() {
         view.isPaused = !screenOn || quality.isPaused
+        updateVisible()
+    }
+
+    private fun updateVisible() {
+        val now = attached && !view.isPaused
+        if (now == visible) return
+        visible = now
+        onVisibleChanged?.invoke(now)
     }
 
     private fun layoutParams() = LayoutParams(

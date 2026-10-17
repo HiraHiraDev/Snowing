@@ -1,6 +1,7 @@
 package com.hirahira.snowing
 
 import android.content.Context
+import android.os.SystemClock
 import androidx.datastore.preferences.preferencesDataStore
 import com.hirahira.snowing.clock.SystemWallClock
 import com.hirahira.snowing.clock.WallClock
@@ -14,9 +15,16 @@ import com.hirahira.snowing.pro.Entitlements
 import com.hirahira.snowing.pro.UnlockedEntitlements
 import com.hirahira.snowing.settings.DataStoreSnowSettingsRepository
 import com.hirahira.snowing.settings.SnowSettingsRepository
+import com.hirahira.snowing.stats.DataStoreSnowStatsRepository
+import com.hirahira.snowing.stats.SnowStatsRepository
+import com.hirahira.snowing.stats.SnowTimeRecorder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 private val Context.snowSettingsDataStore by preferencesDataStore(name = "snow_settings")
 private val Context.snowStateDataStore by preferencesDataStore(name = "snow_state")
+private val Context.snowStatsDataStore by preferencesDataStore(name = "snow_stats")
 
 /**
  * Manual dependency graph. Everything outside this file depends on the
@@ -35,6 +43,18 @@ class AppContainer(context: Context) {
     val entitlements: Entitlements = UnlockedEntitlements()
 
     val wallClock: WallClock = SystemWallClock()
+
+    /** Outlives screens and the overlay service, for writes that must finish after they end. */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    val statsRepository: SnowStatsRepository = DataStoreSnowStatsRepository(appContext.snowStatsDataStore)
+
+    val snowTimeRecorder = SnowTimeRecorder(
+        stats = statsRepository,
+        clock = wallClock,
+        elapsedMillis = SystemClock::elapsedRealtime,
+        scope = appScope,
+    )
 
     val snowSwitch = SnowSwitch(
         stateRepository = DataStoreSnowStateRepository(appContext.snowStateDataStore),

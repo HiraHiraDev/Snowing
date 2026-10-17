@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import com.hirahira.snowing.ui.theme.SnowingTheme
 
@@ -17,6 +18,23 @@ import com.hirahira.snowing.ui.theme.SnowingTheme
 @Composable
 fun HeroTitle(text: String, modifier: Modifier = Modifier) {
     Text(text = text, modifier = modifier, style = SnowingTheme.typography.moodHero)
+}
+
+/** A big figure a screen is about, e.g. "18 h" of snow. */
+@Composable
+fun StatHero(text: String, modifier: Modifier = Modifier) {
+    Text(text = text, modifier = modifier, style = SnowingTheme.typography.statsHero)
+}
+
+/** A small spaced-out heading in capitals above a figure, e.g. "THIS WEEK". */
+@Composable
+fun Eyebrow(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text.uppercase(),
+        modifier = modifier,
+        style = SnowingTheme.typography.eyebrow,
+        color = SnowingTheme.colors.inkSoft,
+    )
 }
 
 /** Heading of a group of controls, e.g. "Adjust". */
@@ -70,10 +88,15 @@ fun Caption(text: String, modifier: Modifier = Modifier) {
     Text(text = text, modifier = modifier, style = SnowingTheme.typography.meta, color = SnowingTheme.colors.inkSoft)
 }
 
-/** A sentence or paragraph. */
+/** A sentence or paragraph; [soft] sets it back, e.g. a caption under a figure. */
 @Composable
-fun BodyText(text: String, modifier: Modifier = Modifier) {
-    Text(text = text, modifier = modifier, style = SnowingTheme.typography.body)
+fun BodyText(text: String, modifier: Modifier = Modifier, soft: Boolean = false) {
+    Text(
+        text = text,
+        modifier = modifier,
+        style = SnowingTheme.typography.body,
+        color = if (soft) SnowingTheme.colors.inkSoft else Color.Unspecified,
+    )
 }
 
 /** Title that asks for attention, e.g. a missing permission. */

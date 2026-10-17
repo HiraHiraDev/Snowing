@@ -125,7 +125,10 @@ class SnowOverlayService : Service() {
                 current.apply(settings)
             } else {
                 attachWindow(
-                    SnowOverlayWindow(this, settings, container.deviceSignals).apply { onDrained = { stopSelf() } },
+                    SnowOverlayWindow(this, settings, container.deviceSignals).apply {
+                        onDrained = { stopSelf() }
+                        onVisibleChanged = container.snowTimeRecorder::setVisible
+                    },
                 )
             }
         }

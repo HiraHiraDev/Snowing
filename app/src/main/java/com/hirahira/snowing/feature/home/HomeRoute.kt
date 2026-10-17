@@ -11,6 +11,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hirahira.snowing.feature.moods.MoodsRoute
 import com.hirahira.snowing.feature.snow.SnowRoute
+import com.hirahira.snowing.feature.stats.StatsRoute
 import com.hirahira.snowing.ui.theme.Sky
 import com.hirahira.snowing.ui.theme.SnowingColors
 import com.hirahira.snowing.ui.theme.SnowingTheme
@@ -27,7 +28,7 @@ fun HomeRoute(viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Facto
                 HomePage.SNOW -> SnowRoute()
                 // The prototype panel until the Moods screen of design 6a is built.
                 HomePage.MOODS -> MoodsRoute()
-                HomePage.STATS -> Unit
+                HomePage.STATS -> StatsRoute()
             }
         }
     }
