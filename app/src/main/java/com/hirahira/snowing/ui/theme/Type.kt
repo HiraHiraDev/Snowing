@@ -6,6 +6,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
@@ -66,7 +67,8 @@ private fun sans(size: TextUnit, weight: FontWeight, tracking: TextUnit = 0.em) 
 private fun underlined(style: TextStyle) = style.copy(textDecoration = TextDecoration.Underline)
 
 internal val DefaultTypography = SnowingTypography(
-    moodHero = serif(76.sp, lineHeight = 0.98.em, tracking = (-0.035).em),
+    // Balanced lines like the design's text-wrap: balance, so a two-word name splits evenly.
+    moodHero = serif(76.sp, lineHeight = 0.98.em, tracking = (-0.035).em).copy(lineBreak = LineBreak.Heading),
     statsHero = serif(80.sp, lineHeight = 1.25.em, tracking = (-0.04).em),
     ctaLabel = serif(30.sp, lineHeight = 1.05.em, tracking = (-0.02).em),
     listItem = serif(26.sp, lineHeight = 1.15.em, tracking = (-0.02).em),
@@ -78,6 +80,7 @@ internal val DefaultTypography = SnowingTypography(
     eyebrow = sans(11.sp, FontWeight.Bold, tracking = 0.14.em),
     body = sans(14.sp, FontWeight.Medium),
     label = sans(13.sp, FontWeight.SemiBold),
+    hint = sans(13.sp, FontWeight.Medium),
     action = underlined(sans(13.sp, FontWeight.Bold)),
     meta = sans(12.sp, FontWeight.Medium),
     metaStrong = sans(12.sp, FontWeight.SemiBold),

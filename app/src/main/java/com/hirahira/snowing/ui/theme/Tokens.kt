@@ -29,6 +29,8 @@ data class SnowingColors(
     val accentFill: Color,
     val ctaFill: Color,
     val ctaDot: Color,
+    /** Light around the idle start button: amber on a dark sky, a soft shadow on a light one. */
+    val ctaGlow: Color,
     /** Behind long content over the scene: fades in from transparent to [scrimMid], then [scrimEnd]. */
     val scrimMid: Color,
     val scrimEnd: Color,
@@ -66,6 +68,7 @@ data class SnowingColors(
                 accentFill = if (light) Fixed.AmberDeep else Fixed.Amber,
                 ctaFill = if (light) Fixed.InkDark else Fixed.Amber,
                 ctaDot = if (light) Fixed.Amber else Fixed.InkOnAmber,
+                ctaGlow = if (light) Fixed.InkDark.copy(alpha = 0.3f) else Fixed.Amber.copy(alpha = 0.55f),
                 scrimMid = if (light) Fixed.ScrimLight.copy(alpha = 0.86f) else Fixed.ScrimDark.copy(alpha = 0.82f),
                 scrimEnd = if (light) Fixed.ScrimLight.copy(alpha = 0.94f) else Fixed.ScrimDark.copy(alpha = 0.90f),
                 onDrift = Fixed.InkOnAmber,
@@ -91,6 +94,8 @@ data class SnowingSpacing(
     val s: Dp = 8.dp,
     /** Vertical padding of rows separated by lines. */
     val row: Dp = 11.dp,
+    /** Between things side by side in a row, e.g. an indicator and its description. */
+    val inline: Dp = 12.dp,
     /** Inside a group, tight. */
     val m: Dp = 14.dp,
     val l: Dp = 18.dp,
@@ -119,6 +124,14 @@ data class SnowingSizes(
     val levelMarkHeight: Dp = 14.dp,
     val levelMarkDimHeight: Dp = 7.dp,
     val levelMarkGap: Dp = 4.dp,
+    /** The round start / stop button and what is drawn inside it. */
+    val ctaButton: Dp = 88.dp,
+    val ctaDot: Dp = 14.dp,
+    val ctaStop: Dp = 18.dp,
+    val ctaOutline: Dp = 2.dp,
+    val ctaGlow: Dp = 48.dp,
+    /** Between the start / stop button and its label. */
+    val ctaGap: Dp = 20.dp,
     /** Marks the active page tab. */
     val tabDot: Dp = 5.dp,
     /** Content scrolling up under the tabs fades out over this distance. */
@@ -156,6 +169,8 @@ data class SnowingTypography(
     val body: TextStyle,
     /** Names of controls, options and tabs. */
     val label: TextStyle,
+    /** A quiet tip on how to use a screen. */
+    val hint: TextStyle,
     /** Actions shown as text, e.g. "Restore". */
     val action: TextStyle,
     val meta: TextStyle,

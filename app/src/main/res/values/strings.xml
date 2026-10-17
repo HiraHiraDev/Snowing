@@ -7,7 +7,7 @@
     <string name="tab_moods">Moods</string>
 
     <string name="control_start">Let it snow</string>
-    <string name="control_stop">Stop the snow</string>
+    <string name="control_stop">Make it stop</string>
     <string name="control_intensity">Intensity</string>
     <string name="control_wind">Wind</string>
 
@@ -17,6 +17,7 @@
     <string name="mood_heavy">Heavy</string>
     <string name="mood_blizzard">Blizzard</string>
     <string name="mood_custom">Your own</string>
+    <string name="hint_permission">Snowing needs your permission to draw over other apps</string>
     <string name="mood_intensity_description">Intensity %1$d of %2$d</string>
     <string name="flake_size">Flake size</string>
     <string name="degrees" translatable="false">%1$d°</string>
@@ -40,9 +41,6 @@
     <string name="tod_dusk">Dusk</string>
     <string name="tod_night">Night</string>
 
-    <string name="permission_title">Allow Snowing to draw over other apps</string>
-    <string name="permission_body">Snow falls on top of everything you use. Android asks you to allow this once, in system settings.</string>
-    <string name="permission_action">Open settings</string>
 
     <string name="notification_channel_name">Snowfall</string>
     <string name="notification_title">It\'s snowing</string>

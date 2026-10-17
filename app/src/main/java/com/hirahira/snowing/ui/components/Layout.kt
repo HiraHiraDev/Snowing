@@ -43,12 +43,31 @@ fun ScrollingPage(
             .fillMaxSize()
             .fadeOutAbove(start = statusBar + spacing.underTabsFadeStart, length = SnowingTheme.sizes.underTabsFade)
             .verticalScroll(rememberScrollState())
-            .safeDrawingPadding()
-            .padding(horizontal = spacing.screen)
-            .padding(top = top, bottom = spacing.screenBottom),
+            .pagePadding(top),
         verticalArrangement = Arrangement.spacedBy(spacing.group),
         content = content,
     )
+}
+
+/**
+ * A page that fits the screen, with the same margins as [ScrollingPage]. Lays out like a
+ * Column, so `Modifier.weight` can push content to the bottom.
+ */
+@Composable
+fun Page(
+    top: Dp,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(modifier = modifier.fillMaxSize().pagePadding(top), content = content)
+}
+
+@Composable
+private fun Modifier.pagePadding(top: Dp): Modifier {
+    val spacing = SnowingTheme.spacing
+    return safeDrawingPadding()
+        .padding(horizontal = spacing.screen)
+        .padding(top = top, bottom = spacing.screenBottom)
 }
 
 /** Related controls kept together by space alone. */

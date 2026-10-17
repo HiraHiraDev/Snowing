@@ -13,6 +13,12 @@ import com.hirahira.snowing.ui.theme.SnowingTheme
 // Text by role. Screens and components say what a text is, never which style and color it
 // takes, so a role looks the same everywhere and changes in one place.
 
+/** The one big name a screen is about, e.g. the active mood. */
+@Composable
+fun HeroTitle(text: String, modifier: Modifier = Modifier) {
+    Text(text = text, modifier = modifier, style = SnowingTheme.typography.moodHero)
+}
+
 /** Heading of a group of controls, e.g. "Adjust". */
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
@@ -38,6 +44,12 @@ fun ControlValue(text: String, modifier: Modifier = Modifier) {
         color = SnowingTheme.colors.inkSoft,
         maxLines = 1,
     )
+}
+
+/** A quiet line that explains the screen, e.g. why a permission is needed. */
+@Composable
+fun Hint(text: String, modifier: Modifier = Modifier) {
+    Text(text = text, modifier = modifier, style = SnowingTheme.typography.hint, color = SnowingTheme.colors.inkSoft)
 }
 
 /** Secondary explanation under a title or control, e.g. "changes apply to Heavy". */

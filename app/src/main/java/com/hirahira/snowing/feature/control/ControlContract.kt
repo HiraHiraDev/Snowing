@@ -9,18 +9,13 @@ import com.hirahira.snowing.settings.WindStrength
 data class ControlUiState(
     /** False until the stored settings arrive; until then nothing below is real (B-008). */
     val loaded: Boolean = false,
-    /** The user's choice, not whether the overlay is up this instant (ADR-0005). */
-    val snowEnabled: Boolean = false,
-    val hasOverlayPermission: Boolean = false,
     /** Built-in moods, then the custom one once it has been saved. */
     val moods: List<MoodItem> = emptyList(),
     val adjust: AdjustUiState? = null,
     val timeOfDay: TimeOfDay = TimeOfDay.AUTO,
     /** Null hides the prototype lab (release builds). */
     val lab: LabUiState? = null,
-) {
-    val canToggle: Boolean get() = snowEnabled || hasOverlayPermission
-}
+)
 
 data class MoodItem(
     val choice: MoodChoice,
@@ -56,9 +51,6 @@ data class LabUiState(
 )
 
 sealed interface ControlEvent {
-    data object ToggleSnow : ControlEvent
-    /** Screen came to the foreground: re-check permission, restore snow if it was lost. */
-    data object Resumed : ControlEvent
     /** Drops any changes to the previous mood. */
     data class MoodSelected(val choice: MoodChoice) : ControlEvent
     data class IntensityChanged(val value: Int) : ControlEvent

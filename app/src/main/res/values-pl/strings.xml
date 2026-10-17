@@ -5,7 +5,7 @@
     <string name="tab_moods">Nastroje</string>
 
     <string name="control_start">Niech pada</string>
-    <string name="control_stop">Zatrzymaj śnieg</string>
+    <string name="control_stop">Niech przestanie</string>
     <string name="control_intensity">Intensywność</string>
     <string name="control_wind">Wiatr</string>
 
@@ -15,6 +15,7 @@
     <string name="mood_heavy">Gęsty</string>
     <string name="mood_blizzard">Zamieć</string>
     <string name="mood_custom">Własny</string>
+    <string name="hint_permission">Snowing potrzebuje zgody na wyświetlanie nad innymi aplikacjami</string>
     <string name="mood_intensity_description">Intensywność %1$d z %2$d</string>
     <string name="flake_size">Wielkość płatków</string>
     <string name="adjust">Dostosuj</string>
@@ -34,9 +35,6 @@
     <string name="tod_dusk">Zmierzch</string>
     <string name="tod_night">Noc</string>
 
-    <string name="permission_title">Pozwól Snowing wyświetlać się nad innymi aplikacjami</string>
-    <string name="permission_body">Śnieg pada nad wszystkim, czego używasz. Android wymaga jednorazowej zgody w ustawieniach systemu.</string>
-    <string name="permission_action">Otwórz ustawienia</string>
 
     <string name="notification_channel_name">Padanie śniegu</string>
     <string name="notification_title">Pada śnieg</string>

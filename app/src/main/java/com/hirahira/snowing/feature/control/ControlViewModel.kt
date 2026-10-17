@@ -7,7 +7,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hirahira.snowing.BuildConfig
 import com.hirahira.snowing.appContainer
-import com.hirahira.snowing.power.SnowSwitch
 import com.hirahira.snowing.pro.Entitlements
 import com.hirahira.snowing.pro.ProGate
 import com.hirahira.snowing.settings.BuiltInMoods
@@ -26,14 +25,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/** The prototype panel: moods, "Adjust", time of day and the lab, until the 6a Moods screen. */
 class ControlViewModel(
     private val settingsRepository: SnowSettingsRepository,
-    private val snowSwitch: SnowSwitch,
     private val entitlements: Entitlements,
     private val labEnabled: Boolean,
 ) : ViewModel() {
-
-    private val hasPermission = MutableStateFlow(snowSwitch.hasPermission())
 
     private val saved: StateFlow<SnowSettings?> =
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -53,17 +50,12 @@ class ControlViewModel(
     val uiState: StateFlow<ControlUiState> = combine(
         saved,
         draft,
-        snowSwitch.enabled,
-        hasPermission,
         entitlements.hasPro,
-    ) { saved, draft, enabled, permission, hasPro ->
+    ) { saved, draft, hasPro ->
         val settings = draft ?: saved ?: return@combine ControlUiState()
-        val choices = MoodChoice.BUILT_IN + listOfNotNull(MoodChoice.CUSTOM.takeIf { settings.customMood != null })
         ControlUiState(
             loaded = true,
-            snowEnabled = enabled,
-            hasOverlayPermission = permission,
-            moods = choices.map { choice ->
+            moods = settings.moodChoices.map { choice ->
                 val mood = BuiltInMoods.of(choice) ?: settings.customMood!!
                 MoodItem(choice = choice, intensity = mood.intensity, selected = choice == settings.mood)
             },
@@ -75,14 +67,7 @@ class ControlViewModel(
 
     fun onEvent(event: ControlEvent) {
         when (event) {
-            ControlEvent.ToggleSnow -> viewModelScope.launch {
-                if (!snowSwitch.toggle()) hasPermission.value = false
-            }
-            ControlEvent.Resumed -> {
-                hasPermission.value = snowSwitch.hasPermission()
-                viewModelScope.launch { snowSwitch.reconcile() }
-            }
-            is ControlEvent.MoodSelected -> edit(now = true) { it.withMood(event.choice) }
+            is ControlEvent.MoodSelected -> edit(now = true) { it.choosing(event.choice) }
             is ControlEvent.IntensityChanged -> adjust { it.copy(intensity = event.value) }
             is ControlEvent.FlakeSizeChanged -> adjust(now = true) { it.copy(flakeSize = event.value) }
             is ControlEvent.WindAngleChanged -> adjust { it.copy(windAngle = event.value) }
@@ -148,11 +133,6 @@ class ControlViewModel(
         }
     }
 
-    private fun SnowSettings.withMood(choice: MoodChoice): SnowSettings {
-        if (choice == MoodChoice.CUSTOM && customMood == null) return this
-        return copy(mood = choice, moodAdjustment = null)
-    }
-
     // An adjustment that lands back on the mood as designed is no change at all.
     private fun SnowSettings.withAdjustment(adjustment: MoodAdjustment): SnowSettings {
         val normalized = adjustment.normalized()
@@ -214,7 +194,6 @@ class ControlViewModel(
                 val container = this[APPLICATION_KEY]!!.appContainer
                 ControlViewModel(
                     settingsRepository = container.settingsRepository,
-                    snowSwitch = container.snowSwitch,
                     entitlements = container.entitlements,
                     labEnabled = BuildConfig.DEBUG,
                 )

@@ -1,6 +1,5 @@
 package com.hirahira.snowing.feature.control
 
-import com.hirahira.snowing.power.SnowSwitch
 import com.hirahira.snowing.settings.BuiltInMoods
 import com.hirahira.snowing.settings.FlakeSize
 import com.hirahira.snowing.settings.Mood
@@ -10,9 +9,7 @@ import com.hirahira.snowing.settings.SnowSettingsRepository
 import com.hirahira.snowing.settings.TimeOfDay
 import com.hirahira.snowing.settings.WindStrength
 import com.hirahira.snowing.testing.FakeEntitlements
-import com.hirahira.snowing.testing.FakeOverlayController
 import com.hirahira.snowing.testing.FakeSettingsRepository
-import com.hirahira.snowing.testing.FakeSnowStateRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,8 +33,6 @@ import org.junit.Test
 class ControlViewModelTest {
 
     private val settings = FakeSettingsRepository()
-    private val snowState = FakeSnowStateRepository()
-    private val overlay = FakeOverlayController()
     private val entitlements = FakeEntitlements()
 
     // Shared with runTest(main) so delays in viewModelScope run on virtual time.
@@ -50,78 +45,20 @@ class ControlViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel(labEnabled: Boolean = false) =
-        ControlViewModel(settings, SnowSwitch(snowState, overlay), entitlements, labEnabled)
+        ControlViewModel(settings, entitlements, labEnabled)
 
     private fun TestScope.collect(vm: ControlViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
 
     @Test
-    fun `toggle turns snow on when permission is granted`() = runTest {
-        val vm = viewModel()
-        collect(vm)
-        vm.onEvent(ControlEvent.ToggleSnow)
-
-        assertTrue(vm.uiState.value.snowEnabled)
-        assertTrue(overlay.isRunning.value)
-    }
-
-    @Test
-    fun `toggle without permission leaves snow off and shows the permission card`() = runTest {
-        overlay.permission = false
-        val vm = viewModel()
-        collect(vm)
-        vm.onEvent(ControlEvent.ToggleSnow)
-
-        assertFalse(vm.uiState.value.snowEnabled)
-        assertFalse(vm.uiState.value.hasOverlayPermission)
-        assertFalse(overlay.isRunning.value)
-    }
-
-    @Test
-    fun `toggle turns running snow off`() = runTest {
-        val vm = viewModel()
-        collect(vm)
-        vm.onEvent(ControlEvent.ToggleSnow)
-        vm.onEvent(ControlEvent.ToggleSnow)
-
-        assertFalse(vm.uiState.value.snowEnabled)
-        assertFalse(overlay.isRunning.value)
-    }
-
-    @Test
-    fun `resume restores snow lost while the app was away`() = runTest {
-        snowState.state.value = true // e.g. force-stopped from the task manager
-        val vm = viewModel()
-        collect(vm)
-        vm.onEvent(ControlEvent.Resumed)
-
-        assertTrue(overlay.isRunning.value)
-    }
-
-    @Test
-    fun `resume re-checks the permission`() = runTest {
-        overlay.permission = false
-        val vm = viewModel()
-        collect(vm)
-        assertFalse(vm.uiState.value.hasOverlayPermission)
-
-        overlay.permission = true
-        vm.onEvent(ControlEvent.Resumed)
-        assertTrue(vm.uiState.value.hasOverlayPermission)
-    }
-
-    @Test
-    fun `state reflects settings, choice and permission`() = runTest {
-        snowState.state.value = true
+    fun `state reflects settings and choice`() = runTest {
         settings.state.value = SnowSettings(mood = MoodChoice.HEAVY, timeOfDay = TimeOfDay.DUSK)
         val vm = viewModel()
         collect(vm)
 
         val state = vm.uiState.value
         assertTrue(state.loaded)
-        assertTrue(state.snowEnabled)
-        assertTrue(state.hasOverlayPermission)
         assertEquals(MoodChoice.BUILT_IN, state.moods.map { it.choice })
         assertEquals(listOf(MoodChoice.HEAVY), state.moods.filter { it.selected }.map { it.choice })
         assertEquals(BuiltInMoods.HEAVY.intensity, state.moods.single { it.selected }.intensity)
@@ -341,7 +278,7 @@ class ControlViewModelTest {
             override val settings = MutableSharedFlow<SnowSettings>()
             override suspend fun update(transform: (SnowSettings) -> SnowSettings) = Unit
         }
-        val vm = ControlViewModel(neverLoads, SnowSwitch(snowState, overlay), entitlements, labEnabled = false)
+        val vm = ControlViewModel(neverLoads, entitlements, labEnabled = false)
         collect(vm)
 
         assertFalse(vm.uiState.value.loaded)

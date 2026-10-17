@@ -21,9 +21,7 @@ import com.hirahira.snowing.ui.components.Caption
 import com.hirahira.snowing.ui.components.ChoiceList
 import com.hirahira.snowing.ui.components.Group
 import com.hirahira.snowing.ui.components.LevelIndicator
-import com.hirahira.snowing.ui.components.Notice
 import com.hirahira.snowing.ui.components.OptionPicker
-import com.hirahira.snowing.ui.components.PrimaryButton
 import com.hirahira.snowing.ui.components.Scrim
 import com.hirahira.snowing.ui.components.ScrollingPage
 import com.hirahira.snowing.ui.components.SectionTitle
@@ -38,7 +36,6 @@ import kotlin.math.roundToInt
 fun ControlScreen(
     state: ControlUiState,
     onEvent: (ControlEvent) -> Unit,
-    onGrantOverlayPermission: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
@@ -46,20 +43,7 @@ fun ControlScreen(
         Scrim(Modifier.fillMaxSize())
         // Nothing that depends on stored state shows before it loads (B-008).
         if (!state.loaded) return@Box
-        ScrollingPage(top = SnowingTheme.spacing.pageTopSnow) {
-            if (!state.hasOverlayPermission) {
-                Notice(
-                    title = stringResource(R.string.permission_title),
-                    body = stringResource(R.string.permission_body),
-                    actionLabel = stringResource(R.string.permission_action),
-                    onAction = onGrantOverlayPermission,
-                )
-            }
-            PrimaryButton(
-                text = stringResource(if (state.snowEnabled) R.string.control_stop else R.string.control_start),
-                onClick = { onEvent(ControlEvent.ToggleSnow) },
-                enabled = state.canToggle,
-            )
+        ScrollingPage(top = SnowingTheme.spacing.pageTopMoods) {
             MoodGroup(state.moods, onEvent)
             state.adjust?.let { AdjustGroup(it, onEvent) }
             OptionPicker(
@@ -250,8 +234,6 @@ private fun ControlScreenPreview() {
         ControlScreen(
             state = ControlUiState(
                 loaded = true,
-                snowEnabled = true,
-                hasOverlayPermission = true,
                 moods = previewMoods,
                 adjust = previewAdjust,
                 lab = LabUiState(
@@ -268,14 +250,13 @@ private fun ControlScreenPreview() {
                 ),
             ),
             onEvent = {},
-            onGrantOverlayPermission = {},
         )
     }
 }
 
 @Preview
 @Composable
-private fun ControlScreenNoPermissionPreview() {
+private fun ControlScreenLockedPreview() {
     SnowingTheme {
         ControlScreen(
             state = ControlUiState(
@@ -284,7 +265,6 @@ private fun ControlScreenNoPermissionPreview() {
                 adjust = previewAdjust.copy(mood = MoodChoice.FIRST_SNOW, edited = false, locked = true),
             ),
             onEvent = {},
-            onGrantOverlayPermission = {},
         )
     }
 }

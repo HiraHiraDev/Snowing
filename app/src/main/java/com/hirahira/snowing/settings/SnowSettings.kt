@@ -21,6 +21,16 @@ data class SnowSettings(
 
     val isMoodAdjusted: Boolean get() = moodAdjustment != null
 
+    /** What can be picked: the built-in moods, then the custom one once it has been saved. */
+    val moodChoices: List<MoodChoice>
+        get() = MoodChoice.BUILT_IN + listOfNotNull(MoodChoice.CUSTOM.takeIf { customMood != null })
+
+    /** Picking a mood drops changes to the previous one (ADR-0010); an empty custom slot cannot be picked. */
+    fun choosing(choice: MoodChoice): SnowSettings {
+        if (choice !in moodChoices) return this
+        return copy(mood = choice, moodAdjustment = null)
+    }
+
     companion object {
         val DEFAULT_MOOD = MoodChoice.FIRST_SNOW
     }

@@ -10,6 +10,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hirahira.snowing.feature.control.ControlRoute
+import com.hirahira.snowing.feature.snow.SnowRoute
 import com.hirahira.snowing.ui.theme.Sky
 import com.hirahira.snowing.ui.theme.SnowingColors
 import com.hirahira.snowing.ui.theme.SnowingTheme
@@ -23,9 +24,10 @@ fun HomeRoute(viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Facto
     SnowingTheme(colors = colors) {
         HomeScreen(state) { page ->
             when (page) {
-                // The prototype panel until the Snow and Moods screens of design 6a are built.
-                HomePage.SNOW -> ControlRoute()
-                HomePage.STATS, HomePage.MOODS -> Unit
+                HomePage.SNOW -> SnowRoute()
+                // The prototype panel until the Moods screen of design 6a is built.
+                HomePage.MOODS -> ControlRoute()
+                HomePage.STATS -> Unit
             }
         }
     }
