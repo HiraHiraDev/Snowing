@@ -51,12 +51,17 @@ fun SettingSlider(
     Column(modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(SnowingTheme.spacing.s),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = label, style = SnowingTheme.typography.body)
+            Text(text = label, modifier = Modifier.weight(1f), style = SnowingTheme.typography.body)
             if (valueText != null) {
-                Text(text = valueText, style = SnowingTheme.typography.label, color = SnowingTheme.colors.contentMuted)
+                Text(
+                    text = valueText,
+                    style = SnowingTheme.typography.label,
+                    color = SnowingTheme.colors.contentMuted,
+                    maxLines = 1,
+                )
             }
         }
         Slider(
