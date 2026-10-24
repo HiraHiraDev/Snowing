@@ -9,6 +9,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** How snow goes away when it is switched off (ADR-0006 §Zmiana 2026-10-18). */
+enum class StopStyle {
+    /** From the app: no new flakes, the low ones fall out, the rest fades; a few seconds. */
+    GENTLE,
+
+    /** From the tile or the notification: gone at once, e.g. over a screen that refuses taps under it. */
+    AT_ONCE,
+}
+
 /** Starts and stops the snow overlay. The UI talks only to this interface. */
 interface OverlayController {
     val isRunning: StateFlow<Boolean>
@@ -18,8 +27,7 @@ interface OverlayController {
 
     fun start()
 
-    /** Snow stops falling; the service ends by itself once the last flakes are out (ADR-0006 §5). */
-    fun stop()
+    fun stop(style: StopStyle)
 }
 
 class ServiceOverlayController(context: Context) : OverlayController {
@@ -35,8 +43,12 @@ class ServiceOverlayController(context: Context) : OverlayController {
         ContextCompat.startForegroundService(appContext, serviceIntent)
     }
 
-    override fun stop() {
+    override fun stop(style: StopStyle) {
         if (!OverlayRuntime.running.value) return
+        if (style == StopStyle.AT_ONCE) {
+            appContext.stopService(serviceIntent)
+            return
+        }
         try {
             // Allowed from the background: the app is running a foreground service.
             appContext.startService(Intent(serviceIntent).setAction(SnowOverlayService.ACTION_STOP))

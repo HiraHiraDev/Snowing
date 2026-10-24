@@ -2,6 +2,7 @@ package com.hirahira.snowing.testing
 
 import com.hirahira.snowing.clock.WallClock
 import com.hirahira.snowing.overlay.OverlayController
+import com.hirahira.snowing.overlay.StopStyle
 import com.hirahira.snowing.power.SnowStateRepository
 import com.hirahira.snowing.pro.Entitlements
 import com.hirahira.snowing.settings.SnowSettings
@@ -45,7 +46,11 @@ class FakeOverlayController(var permission: Boolean = true) : OverlayController 
         isRunning.value = true
     }
 
-    override fun stop() {
+    var lastStop: StopStyle? = null
+        private set
+
+    override fun stop(style: StopStyle) {
+        lastStop = style
         isRunning.value = false
     }
 }

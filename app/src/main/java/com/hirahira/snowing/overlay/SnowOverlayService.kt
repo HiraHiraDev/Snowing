@@ -89,7 +89,7 @@ class SnowOverlayService : Service() {
         return START_STICKY
     }
 
-    /** Snow stops falling; the service ends when the last flakes are out, or after the fuse (ADR-0006 §5). */
+    /** No new flakes; the low ones fall out, then the rest fades, and the service ends (ADR-0006 §Zmiana). */
     private fun beginStop() {
         val current = window
         if (current == null) {
@@ -166,12 +166,12 @@ class SnowOverlayService : Service() {
         }
 
     companion object {
-        /** Stop falling and end once the snow is gone, instead of vanishing at once. */
+        /** The gentle stop: a few seconds instead of vanishing at once. */
         const val ACTION_STOP = "com.hirahira.snowing.action.STOP_SNOW"
 
         private const val TAG = "SnowOverlayService"
 
-        /** After this, whatever is still falling fades out (ADR-0006 §5: at most ~22 s). */
-        private const val STOP_FUSE_MS = 20_000L
+        /** After this, whatever is still falling fades out over 2 s: a gentle stop takes ~3.5 s at most. */
+        private const val STOP_FUSE_MS = 1_500L
     }
 }

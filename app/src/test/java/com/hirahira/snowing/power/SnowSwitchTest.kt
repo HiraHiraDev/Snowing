@@ -1,5 +1,6 @@
 package com.hirahira.snowing.power
 
+import com.hirahira.snowing.overlay.StopStyle
 import com.hirahira.snowing.testing.FakeOverlayController
 import com.hirahira.snowing.testing.FakeSnowStateRepository
 import kotlinx.coroutines.test.runTest
@@ -80,5 +81,16 @@ class SnowSwitchTest {
         overlay.start()
         snowSwitch.reconcile()
         assertFalse(overlay.isRunning.value)
+    }
+
+    @Test
+    fun `the app stops gently, shortcuts at once`() = runTest {
+        snowSwitch.turnOn()
+        snowSwitch.turnOff()
+        assertEquals(StopStyle.GENTLE, overlay.lastStop)
+
+        snowSwitch.turnOn()
+        snowSwitch.turnOff(StopStyle.AT_ONCE)
+        assertEquals(StopStyle.AT_ONCE, overlay.lastStop)
     }
 }

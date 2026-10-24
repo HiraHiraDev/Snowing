@@ -1,6 +1,7 @@
 package com.hirahira.snowing.power
 
 import com.hirahira.snowing.overlay.OverlayController
+import com.hirahira.snowing.overlay.StopStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
@@ -26,9 +27,10 @@ class SnowSwitch(
         return true
     }
 
-    suspend fun turnOff() {
+    /** [style]: gently from the app, at once from the tile and the notification (ADR-0006 §Zmiana). */
+    suspend fun turnOff(style: StopStyle = StopStyle.GENTLE) {
         stateRepository.setEnabled(false)
-        overlay.stop()
+        overlay.stop(style)
     }
 
     /** @return false when turning on failed for lack of permission. */
@@ -50,7 +52,7 @@ class SnowSwitch(
         val shouldSnow = stateRepository.enabled.first()
         when {
             shouldSnow && !overlay.isRunning.value && overlay.hasPermission() -> overlay.start()
-            !shouldSnow && overlay.isRunning.value -> overlay.stop()
+            !shouldSnow && overlay.isRunning.value -> overlay.stop(StopStyle.GENTLE)
         }
     }
 }
