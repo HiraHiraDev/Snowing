@@ -55,6 +55,8 @@
     <string name="notification_stop">Stop the snow</string>
 
     <string name="tile_label">Snow</string>
+    <!-- Read for a numbered step's ring. -->
+    <string name="ob_guide_step">Step %1$d</string>
     <!-- Under the tile's name on a large tile, and for TalkBack. -->
     <string name="tile_needs_permission">Needs permission</string>
     <string name="tile_state_snowing">Snowing, %1$s</string>

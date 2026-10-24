@@ -17,14 +17,16 @@ data class SkyPalette(
     val hillNear: Color,
     val driftTop: Color,
     val driftBottom: Color,
-    /** How brightly the house windows glow, 0..1. */
+    /** How brightly the cabin windows are lit, 0..1. */
     val windowGlow: Float,
 )
 
 object Sky {
+    // hillFar is ours: the design's #1F2854 is darker than the near hill and nearly the sky's
+    // color, so the far hill vanished at night. Lighter than the near hill, as at other hours.
     val Night = SkyPalette(
         Color(0xFF070B1F), Color(0xFF121A44), Color(0xFF26306A), Color(0xFF3A4580),
-        Color(0xFF1F2854), Color(0xFF28326A), Color(0xFFAEBBE0), Color(0xFF6D7BB0), windowGlow = 1f,
+        Color(0xFF333E79), Color(0xFF28326A), Color(0xFFAEBBE0), Color(0xFF6D7BB0), windowGlow = 1f,
     )
     val Dawn = SkyPalette(
         Color(0xFF3B3F6E), Color(0xFF8A7AA6), Color(0xFFE4A9A0), Color(0xFFF6D3B8),
@@ -67,14 +69,15 @@ object Sky {
         )
     }
 
-    // Straight on the sRGB values, as the design's HTML does; Compose's lerp mixes in Oklab
-    // and gives other colors at dawn and dusk.
-    private fun mix(a: Color, b: Color, t: Float) = Color(
-        red = a.red + (b.red - a.red) * t,
-        green = a.green + (b.green - a.green) * t,
-        blue = a.blue + (b.blue - a.blue) * t,
-    )
 }
+
+// Straight on the sRGB values, as the design's HTML does; Compose's lerp mixes in Oklab
+// and gives other colors at dawn and dusk.
+internal fun mix(a: Color, b: Color, t: Float) = Color(
+    red = a.red + (b.red - a.red) * t,
+    green = a.green + (b.green - a.green) * t,
+    blue = a.blue + (b.blue - a.blue) * t,
+)
 
 /** Colors that do not change with the time of day. */
 internal object Fixed {
@@ -87,11 +90,15 @@ internal object Fixed {
     val InkDark = Color(0xFF1C2233)
     val InkOnAmber = Color(0xFF2A1D14)
     val InkOnDriftSoft = Color(0xFF4A3A48)
-    val House = Color(0xFF221C30)
+    /** Darkens scene colors into the cabin and its pines (scene update 6.1). */
+    val SceneInk = Color(0xFF0B0A14)
     val MoonDisc = Color(0xFFF3F1E6)
     val SunDisc = Color(0xFFFFF1D6)
     val SunGlow = Color(0x73FFD6A0)
     val MoonGlow = Color(0x2EF3F1E6)
     val ScrimDark = Color(0xFF120E1C)
+    /** The onboarding panel and the scrim around it (design 6.2). */
+    val Sheet = Color(0xFF1A1528)
+    val SheetScrim = Color(0xFF0A0816)
     val ScrimLight = Color(0xFFEEF3FA)
 }

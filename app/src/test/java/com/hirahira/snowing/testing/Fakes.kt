@@ -1,6 +1,8 @@
 package com.hirahira.snowing.testing
 
 import com.hirahira.snowing.clock.WallClock
+import com.hirahira.snowing.onboarding.OnboardingRepository
+import com.hirahira.snowing.onboarding.OnboardingPlatform
 import com.hirahira.snowing.overlay.OverlayController
 import com.hirahira.snowing.overlay.StopStyle
 import com.hirahira.snowing.power.SnowStateRepository
@@ -81,4 +83,22 @@ class FakeWallClock(
     override fun now() = time
 
     override fun today() = date
+}
+
+class FakeOnboardingRepository(completed: Boolean = false) : OnboardingRepository {
+    override val completed = MutableStateFlow(completed)
+
+    override suspend fun complete() {
+        completed.value = true
+    }
+}
+
+/** API 33+ unless told otherwise: the overlay setting lists apps, notifications can be asked for, the tile offered. */
+class FakeOnboardingPlatform(
+    var notifications: Boolean = false,
+    override val overlaySettingsListApps: Boolean = true,
+    override val canAskForNotifications: Boolean = true,
+    override val canOfferTile: Boolean = true,
+) : OnboardingPlatform {
+    override fun notificationsAllowed() = notifications
 }

@@ -49,6 +49,7 @@
     <string name="notification_stop">Zatrzymaj śnieg</string>
 
     <string name="tile_label">Śnieg</string>
+    <string name="ob_guide_step">Krok %1$d</string>
     <string name="tile_needs_permission">Wymaga zgody</string>
     <string name="tile_state_snowing">Pada, %1$s</string>
     <string name="tile_state_off">Wyłączony</string>

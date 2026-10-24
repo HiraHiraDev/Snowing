@@ -20,13 +20,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import com.hirahira.snowing.ui.theme.SnowingTheme
 import kotlin.math.roundToInt
 
+/** The filled main action of a screen or panel: a tall accent pill with a soft glow (design 6.2). */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -34,19 +37,19 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val colors = SnowingTheme.colors
+    val shape = SnowingTheme.shapes.pill
     Button(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = SnowingTheme.sizes.touchTarget),
+            .heightIn(min = SnowingTheme.sizes.button)
+            .dropShadow(shape, Shadow(radius = SnowingTheme.sizes.buttonGlow, color = colors.ctaGlow)),
         enabled = enabled,
-        shape = SnowingTheme.shapes.pill,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = SnowingTheme.colors.ctaFill,
-            contentColor = SnowingTheme.colors.ctaDot,
-        ),
+        shape = shape,
+        colors = ButtonDefaults.buttonColors(containerColor = colors.ctaFill, contentColor = colors.ctaDot),
     ) {
-        Text(text = text, style = SnowingTheme.typography.rowTitle)
+        Text(text = text, style = SnowingTheme.typography.button)
     }
 }
 

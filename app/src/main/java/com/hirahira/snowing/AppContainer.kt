@@ -6,6 +6,10 @@ import android.os.SystemClock
 import androidx.datastore.preferences.preferencesDataStore
 import com.hirahira.snowing.clock.SystemWallClock
 import com.hirahira.snowing.clock.WallClock
+import com.hirahira.snowing.onboarding.AndroidOnboardingPlatform
+import com.hirahira.snowing.onboarding.DataStoreOnboardingRepository
+import com.hirahira.snowing.onboarding.OnboardingPlatform
+import com.hirahira.snowing.onboarding.OnboardingRepository
 import com.hirahira.snowing.overlay.AndroidDeviceSignals
 import com.hirahira.snowing.overlay.DeviceSignals
 import com.hirahira.snowing.overlay.OverlayController
@@ -27,6 +31,7 @@ import kotlinx.coroutines.SupervisorJob
 private val Context.snowSettingsDataStore by preferencesDataStore(name = "snow_settings")
 private val Context.snowStateDataStore by preferencesDataStore(name = "snow_state")
 private val Context.snowStatsDataStore by preferencesDataStore(name = "snow_stats")
+private val Context.onboardingDataStore by preferencesDataStore(name = "onboarding")
 
 /**
  * Manual dependency graph. Everything outside this file depends on the
@@ -62,6 +67,10 @@ class AppContainer(context: Context) {
         stateRepository = DataStoreSnowStateRepository(appContext.snowStateDataStore),
         overlay = overlayController,
     )
+
+    val onboardingRepository: OnboardingRepository = DataStoreOnboardingRepository(appContext.onboardingDataStore)
+
+    val onboardingPlatform: OnboardingPlatform = AndroidOnboardingPlatform(appContext)
 
     /** The notification's stop action; overlay must not know [SnowSwitch], so it gets the intent from here. */
     val snowOffAction: PendingIntent

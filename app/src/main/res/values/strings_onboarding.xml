@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Onboarding 6.2 - replaces previous onboarding strings. %1$s = live label (notification action / tile name) -->
+<resources>
+    <string name="ob_step_of">Step %1$d of %2$d</string>
+
+    <!-- Step 1: overlay permission -->
+    <string name="ob_overlay_title">Let it snow everywhere</string>
+    <string name="ob_overlay_body">Snowing draws snow on top of your other apps: home screen, chats, everywhere. The flakes never get in the way, because you tap right through them.</string>
+    <string name="ob_overlay_why">For this, Android needs one permission: %1$s. We only use it for the snow.</string>
+    <string name="ob_overlay_perm_name">“Display over other apps”</string>
+    <string name="ob_overlay_guide_1">A list of apps opens</string>
+    <string name="ob_overlay_guide_2">Find Snowing and switch it on</string>
+    <string name="ob_overlay_guide_3">Come back here with Back</string>
+    <string name="ob_overlay_guide_legacy">Switch it on and come back here with Back.</string>
+    <string name="ob_overlay_open">Open settings</string>
+    <string name="ob_not_now">Not now</string>
+
+    <!-- Step 2: how to stop -->
+    <string name="ob_stop_title">Stop it in one move</string>
+    <string name="ob_notif_title">Notification</string>
+    <string name="ob_notif_body">While it snows, your notifications have a “%1$s” button.</string>
+    <string name="ob_notif_action">Turn on notifications</string>
+    <string name="ob_notif_done">Turned on</string>
+    <string name="ob_tile_title">“%1$s” tile</string>
+    <string name="ob_tile_body">Swipe down from the top of the screen and tap it to turn snow on or off.</string>
+    <string name="ob_tile_action">Add the tile</string>
+    <string name="ob_tile_done">Added</string>
+    <string name="ob_tile_manual">Add it by editing your Quick Settings (the pencil icon).</string>
+    <string name="ob_secure_note">On a few Google screens, like your account settings, Android blocks taps through the snow to keep you safe. Stop it there from the notification or the tile.</string>
+    <string name="ob_go">Let it snow</string>
+</resources>

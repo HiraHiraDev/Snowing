@@ -15,6 +15,10 @@ internal fun Context.openOverlaySettings() {
     startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri()))
 }
 
+internal fun Context.openNotificationSettings() {
+    startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+}
+
 // Design 6a: a confirming buzz to start, a light tick to stop. CONFIRM needs API 30.
 internal fun View.startFeedback() {
     val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

@@ -4,40 +4,61 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.CacheDrawScope
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
+import com.hirahira.snowing.ui.theme.SnowingColors
 import com.hirahira.snowing.ui.theme.SnowingTheme
 import kotlin.math.PI
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * The shared background of the pages (design 6a): sky with the sun or moon, hills with a
- * house, and a snowdrift, each layer wider than the screen and shifted at its own speed.
- * Shapes are the design's placeholders; layers and palettes are final.
+ * The shared background of the pages (design 6a, scene update 6.1): sky with the sun or moon;
+ * hills with a forest and pines; the cabin with smoke from its chimney; a snowdrift with a
+ * cat's paw prints. Each layer is wider than the screen and shifted at its own speed.
  *
  * Scrolling only moves the layers ([pageOffset] is read during placement), so it never redraws;
- * a new [hour] or palette does.
+ * a new [hour] or palette does. The smoke has a layer of its own and is the only thing drawn
+ * every frame, unless [smokeMoving] is off (reduced motion, battery saver): then it stands still.
  *
  * @param pageOffset current page plus the offset fraction, 0 for the first page.
- * @param driftDrop 0..1, how far the drift sinks to make room for content above it.
+ * @param smokeLean -1..1, which way and how far the wind bends the smoke, 0 straight up.
  */
 @Composable
 fun Landscape(
     hour: Float,
     pageOffset: () -> Float,
     modifier: Modifier = Modifier,
-    driftDrop: () -> Float = { 0f },
+    smokeLean: Float = 0f,
+    smokeMoving: Boolean = true,
 ) {
     val colors = SnowingTheme.colors
     val sky = colors.sky
+    val smokeTime = remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(smokeMoving) {
+        if (!smokeMoving) return@LaunchedEffect
+        // The clock pauses with the app; a long gap counts as one short step, so the smoke never jumps.
+        var last = withFrameNanos { it }
+        while (true) {
+            withFrameNanos { now ->
+                smokeTime.floatValue += ((now - last) / NANOS_PER_SECOND).coerceAtMost(MAX_SMOKE_STEP)
+                last = now
+            }
+        }
+    }
     Box(modifier.fillMaxSize()) {
         Spacer(
             Modifier
@@ -66,47 +87,91 @@ fun Landscape(
         Spacer(
             Modifier
                 .parallaxLayer(widthFactor = HILLS_WIDTH / DESIGN_WIDTH, speed = HILLS_SPEED, pageOffset)
-                .drawWithCache {
-                    val u = size.width / HILLS_WIDTH
-                    val house = shape(HOUSE_X, HOUSE_BOTTOM, HOUSE_W, HOUSE_H, u)
-                    val windowGlow = colors.windowLight.copy(alpha = WINDOW_GLOW_ALPHA * sky.windowGlow)
-                    val window = colors.windowLight.copy(alpha = sky.windowGlow)
-                    val windowSize = Size(WINDOW * u, WINDOW * u)
-                    val windows = WINDOW_XS.map { x -> house.topLeft + Offset(x * u, WINDOW_Y * u) }
-                    val windowGlowRadius = (WINDOW / 2 + WINDOW_GLOW_SPREAD + WINDOW_GLOW_BLUR / 2) * u
-                    val glows = windows.map { topLeft ->
-                        val center = topLeft + Offset(windowSize.width / 2, windowSize.height / 2)
-                        center to glowBrush(windowGlow, center, windowSize.width / 2, windowGlowRadius)
-                    }
-                    val far = shape(FAR_HILL_X, FAR_HILL_BOTTOM, FAR_HILL_W, FAR_HILL_H, u)
-                    val near = shape(NEAR_HILL_X, NEAR_HILL_BOTTOM, NEAR_HILL_W, NEAR_HILL_H, u)
-                    onDrawBehind {
-                        drawOval(sky.hillFar, far.topLeft, far.size)
-                        drawOval(sky.hillNear, near.topLeft, near.size)
-                        drawRect(colors.house, house.topLeft, house.size)
-                        if (sky.windowGlow > 0f) {
-                            glows.forEach { (center, brush) -> drawCircle(brush, windowGlowRadius, center) }
-                            windows.forEach { drawRect(window, it, windowSize) }
-                        }
+                .drawBehind {
+                    val ridges = LandscapeScene.ridges
+                    inScene {
+                        drawPath(ridges.hazeGround, colors.haze)
+                        drawPath(ridges.hazeTrees, colors.haze)
+                        drawPath(ridges.farHill, sky.hillFar)
+                        drawPath(ridges.farPines, sky.hillFar)
+                        drawPath(ridges.nearHill, sky.hillNear)
+                        drawPath(ridges.nearPines, sky.hillNear)
                     }
                 },
         )
         Spacer(
             Modifier
-                .parallaxLayer(widthFactor = HILLS_WIDTH / DESIGN_WIDTH, speed = HILLS_SPEED, pageOffset) {
-                    driftDrop().coerceIn(0f, 1f) * DRIFT_DROP
-                }
-                .drawWithCache {
-                    val u = size.width / HILLS_WIDTH
-                    val drift = shape(DRIFT_X, DRIFT_BOTTOM, DRIFT_W, DRIFT_H, u)
-                    val gradient = Brush.verticalGradient(
-                        listOf(sky.driftTop, sky.driftBottom),
-                        startY = drift.topLeft.y,
-                        endY = drift.topLeft.y + drift.size.height,
-                    )
-                    onDrawBehind { drawOval(gradient, drift.topLeft, drift.size) }
+                .parallaxLayer(widthFactor = HILLS_WIDTH / DESIGN_WIDTH, speed = HILLS_SPEED, pageOffset)
+                .drawBehind { inScene { smoke(sky.driftTop, smokeLean, smokeTime.floatValue, smokeMoving) } },
+        )
+        Spacer(
+            Modifier
+                .parallaxLayer(widthFactor = HILLS_WIDTH / DESIGN_WIDTH, speed = HILLS_SPEED, pageOffset)
+                .drawBehind { inScene { cabin(colors, sky.driftTop, sky.windowGlow) } },
+        )
+        Spacer(
+            Modifier
+                .parallaxLayer(widthFactor = HILLS_WIDTH / DESIGN_WIDTH, speed = HILLS_SPEED, pageOffset)
+                .drawBehind {
+                    inScene {
+                        drawPath(
+                            LandscapeScene.drift,
+                            Brush.verticalGradient(
+                                listOf(sky.driftTop, sky.driftBottom),
+                                startY = LandscapeScene.DRIFT_SHADE_TOP,
+                                endY = LandscapeScene.DRIFT_SHADE_BOTTOM,
+                            ),
+                        )
+                        LandscapeScene.paws.forEach { drawCircle(colors.paw, it.radius, it.center) }
+                    }
                 },
         )
+    }
+}
+
+/** Draws [block] in the scene's design dp, scaled to the layer's width and anchored to its bottom. */
+private inline fun DrawScope.inScene(crossinline block: DrawScope.() -> Unit) {
+    val u = size.width / LandscapeScene.WIDTH
+    withTransform({
+        translate(top = size.height - LandscapeScene.HEIGHT * u)
+        scale(u, u, pivot = Offset.Zero)
+    }) { block() }
+}
+
+private fun DrawScope.cabin(colors: SnowingColors, snow: Color, windowLight: Float) {
+    val cabin = LandscapeScene.cabin
+    drawPath(cabin.walls, colors.cabin)
+    cabin.logs.forEach { drawRect(colors.logs, it.topLeft, it.size) }
+    drawPath(cabin.gable, colors.gable)
+    drawPath(cabin.roofSnow, snow)
+    cabin.windows.forEach { drawRect(colors.windowBase, it.topLeft, it.size) }
+    if (windowLight > 0f) {
+        cabin.windows.forEach { drawRect(colors.windowLight.copy(alpha = windowLight), it.topLeft, it.size) }
+    }
+    cabin.mullions.forEach { drawRect(colors.cabin, it.topLeft, it.size) }
+    drawPath(cabin.sidePines, colors.cabin)
+    drawPath(cabin.sidePineSnow, snow)
+    drawPath(cabin.mound, snow)
+}
+
+/**
+ * Puffs rise from the chimney, fast at first, grow and fade, leaning with the wind and
+ * wobbling gently. [time] runs on, so the wobble never restarts with a puff's cycle.
+ */
+private fun DrawScope.smoke(color: Color, lean: Float, time: Float, moving: Boolean) {
+    val chimney = LandscapeScene.ChimneyTop
+    val wind = lean.coerceIn(-1f, 1f)
+    val phases = if (moving) {
+        List(SMOKE_PUFFS) { i -> (time / SMOKE_CYCLE + i.toFloat() / SMOKE_PUFFS) % 1f }
+    } else {
+        STILL_PUFFS
+    }
+    phases.forEachIndexed { i, p ->
+        val rise = 1f - (1f - p).pow(1.6f)
+        val x = chimney.x + rise * SMOKE_DRIFT * wind + sin(time * 0.9f + i * 1.7f) * (1f + p * 4f)
+        val y = chimney.y - rise * SMOKE_RISE
+        val alpha = SMOKE_ALPHA * sin(PI.toFloat() * p).pow(1.3f)
+        drawCircle(color.copy(alpha = alpha), 2.6f + p * 9f, Offset(x, y))
     }
 }
 
@@ -118,13 +183,12 @@ internal fun elevation(hour: Float): Float {
 
 /**
  * A layer [widthFactor] times as wide as the screen, shifted left by [speed] screen widths
- * per page and down by [drop] design dp. Both only move the layer, so its drawing is kept.
+ * per page. That only moves the layer, so its drawing is kept.
  */
 private fun Modifier.parallaxLayer(
     widthFactor: Float,
     speed: Float,
     pageOffset: () -> Float,
-    drop: () -> Float = { 0f },
 ) = layout { measurable, constraints ->
     val screenWidth = constraints.maxWidth
     val placeable = measurable.measure(
@@ -133,16 +197,9 @@ private fun Modifier.parallaxLayer(
     layout(screenWidth, constraints.maxHeight) {
         placeable.placeWithLayer(0, 0) {
             translationX = -pageOffset() * speed * screenWidth
-            translationY = drop() * screenWidth / DESIGN_WIDTH
         }
     }
 }
-
-private class Shape(val topLeft: Offset, val size: Size)
-
-// Design coordinates are dp in a 360 x 780 frame, measured from the bottom; [u] scales them to the screen width.
-private fun CacheDrawScope.shape(x: Float, bottom: Float, width: Float, height: Float, u: Float) =
-    Shape(Offset(x * u, size.height - (bottom + height) * u), Size(width * u, height * u))
 
 // A CSS box-shadow glow, approximated: solid out to the shape's edge, then fading to nothing.
 private fun glowBrush(color: Color, center: Offset, solidRadius: Float, radius: Float) = Brush.radialGradient(
@@ -173,28 +230,13 @@ private const val DISC_X = 330f
 private const val DISC_LOWEST = 560f
 private const val DISC_TRAVEL = 440f
 
-private const val FAR_HILL_X = -100f
-private const val FAR_HILL_BOTTOM = 120f
-private const val FAR_HILL_W = 520f
-private const val FAR_HILL_H = 220f
-private const val NEAR_HILL_X = 340f
-private const val NEAR_HILL_BOTTOM = 110f
-private const val NEAR_HILL_W = 560f
-private const val NEAR_HILL_H = 240f
-private const val HOUSE_X = 470f
-private const val HOUSE_BOTTOM = 196f
-private const val HOUSE_W = 64f
-private const val HOUSE_H = 44f
-private const val WINDOW = 14f
-private const val WINDOW_Y = 14f
-private val WINDOW_XS = listOf(10f, 38f)
-private const val WINDOW_GLOW_BLUR = 18f
-private const val WINDOW_GLOW_SPREAD = 4f
-private const val WINDOW_GLOW_ALPHA = 0.6f
-private const val DRIFT_X = -60f
-private const val DRIFT_BOTTOM = -60f
-private const val DRIFT_W = 860f
-private const val DRIFT_H = 300f
+private const val SMOKE_PUFFS = 5
+private const val SMOKE_CYCLE = 7f
+private const val SMOKE_DRIFT = 22f
+private const val SMOKE_RISE = 70f
+private const val SMOKE_ALPHA = 0.34f
+private const val NANOS_PER_SECOND = 1_000_000_000f
+private const val MAX_SMOKE_STEP = 0.1f
 
-/** How far the drift sinks on the Stats page: from bottom -60 to -130 in the design. */
-private const val DRIFT_DROP = 70f
+/** With motion off: three puffs standing along the way up. */
+private val STILL_PUFFS = listOf(0.2f, 0.5f, 0.8f)

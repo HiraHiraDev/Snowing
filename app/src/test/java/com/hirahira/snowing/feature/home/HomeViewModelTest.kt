@@ -4,6 +4,7 @@ import com.hirahira.snowing.clock.WallClock
 import com.hirahira.snowing.clock.millisToNextMinute
 import com.hirahira.snowing.settings.SnowSettings
 import com.hirahira.snowing.settings.TimeOfDay
+import com.hirahira.snowing.testing.FakeOnboardingRepository
 import com.hirahira.snowing.testing.FakeSettingsRepository
 import com.hirahira.snowing.ui.theme.Sky
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ import java.time.LocalTime
 class HomeViewModelTest {
 
     private val settings = FakeSettingsRepository()
+    private val onboarding = FakeOnboardingRepository(completed = true)
     private val main = UnconfinedTestDispatcher()
 
     @Before
@@ -47,7 +49,7 @@ class HomeViewModelTest {
 
     @Test
     fun `auto follows the clock minute by minute`() = runTest(main) {
-        val vm = HomeViewModel(settings, clockFrom(LocalTime.of(17, 29, 30)))
+        val vm = HomeViewModel(settings, onboarding, clockFrom(LocalTime.of(17, 29, 30)))
         collect(vm)
         assertEquals(17f + 29f / 60, vm.uiState.value.skyHour, 1e-4f)
 
@@ -61,12 +63,24 @@ class HomeViewModelTest {
     @Test
     fun `a chosen time of day pins its hour`() = runTest(main) {
         settings.state.value = SnowSettings(timeOfDay = TimeOfDay.DAWN)
-        val vm = HomeViewModel(settings, clockFrom(LocalTime.of(23, 0)))
+        val vm = HomeViewModel(settings, onboarding, clockFrom(LocalTime.of(23, 0)))
         collect(vm)
         assertEquals(Sky.HOUR_DAWN, vm.uiState.value.skyHour)
 
         settings.state.value = SnowSettings(timeOfDay = TimeOfDay.AUTO)
         assertEquals(23f, vm.uiState.value.skyHour)
+    }
+
+    @Test
+    fun `onboarding comes first, then the pages`() = runTest(main) {
+        onboarding.completed.value = false
+        val vm = HomeViewModel(settings, onboarding, clockFrom(LocalTime.NOON))
+        assertEquals(HomeContent.LOADING, vm.uiState.value.content)
+        collect(vm)
+        assertEquals(HomeContent.ONBOARDING, vm.uiState.value.content)
+
+        onboarding.complete()
+        assertEquals(HomeContent.PAGES, vm.uiState.value.content)
     }
 
     @Test

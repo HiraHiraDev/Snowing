@@ -21,8 +21,14 @@ data class SnowingColors(
     /** Ink picked for contrast with the sky: dark on a light day sky, light otherwise. */
     val ink: Color,
     val inkSoft: Color,
+    /** The quietest text, e.g. a footnote. */
+    val inkFaint: Color,
     /** 1 dp lines that group content instead of cards. */
     val line: Color,
+    /** Thin rings around icons. */
+    val outline: Color,
+    /** A faint fill that sets a small area apart, e.g. a preview of a system setting. */
+    val well: Color,
     /** Unlit ticks of indicators and rulers. */
     val tickDim: Color,
     val accentText: Color,
@@ -35,12 +41,33 @@ data class SnowingColors(
     val ctaGlow: Color,
     /** Behind long content over the scene, at its strongest; it fades in from transparent above. */
     val scrim: Color,
+    /**
+     * A panel over the scene (onboarding, ADR-0011, design 6.2): translucent over a blurred
+     * copy of the scene; [sheetSolid] where Android cannot blur (API < 31).
+     */
+    val sheet: Color,
+    val sheetSolid: Color,
+    /** Over the app while a panel is open. */
+    val sheetScrim: Color,
+    /** The panel's lit top edge. */
+    val sheetHighlight: Color,
+    /** The bar to drag a panel by. */
+    val sheetHandle: Color,
     /** Text on the light snowdrift, whatever the sky. */
     val onDrift: Color,
     val onDriftSoft: Color,
-    val house: Color,
-    /** House windows; the sky sets how much they glow. */
+    /** The distant forest behind the hills. */
+    val haze: Color,
+    /** Cabin walls, mullions and the dark pines beside it. */
+    val cabin: Color,
+    val gable: Color,
+    /** Lines between the cabin's logs. */
+    val logs: Color,
+    /** Cabin windows unlit; [windowLight] shines over them as much as the sky allows. */
+    val windowBase: Color,
     val windowLight: Color,
+    /** Cat paw prints in the drift. */
+    val paw: Color,
     val sunDisc: Color,
     val sunGlow: Color,
     val moonDisc: Color,
@@ -56,6 +83,15 @@ data class SnowingColors(
         // Palette.kt uses Color.luminance(), which is linear and keeps the day sky "dark".
         private fun Color.luma(): Float = 0.2126f * red + 0.7152f * green + 0.0722f * blue
 
+        /**
+         * The onboarding panel is dark whatever the sky (design 6.2): night ink and amber, with
+         * fainter lines and a softer glow around the button.
+         */
+        fun forSheet(): SnowingColors = forSky(Sky.Night).copy(
+            line = Fixed.InkLight.copy(alpha = 0.14f),
+            ctaGlow = Fixed.Amber.copy(alpha = 0.35f),
+        )
+
         fun forSky(sky: SkyPalette): SnowingColors {
             val light = sky.skyTop.luma() > LIGHT_SKY_LUMA
             val ink = if (light) Fixed.InkDark else Fixed.InkLight
@@ -63,7 +99,10 @@ data class SnowingColors(
                 sky = sky,
                 ink = ink,
                 inkSoft = ink.copy(alpha = if (light) 0.72f else 0.78f),
+                inkFaint = ink.copy(alpha = 0.66f),
                 line = ink.copy(alpha = if (light) 0.20f else 0.22f),
+                outline = ink.copy(alpha = 0.28f),
+                well = ink.copy(alpha = 0.10f),
                 tickDim = ink.copy(alpha = if (light) 0.35f else 0.40f),
                 accentText = if (light) Fixed.AmberDeepText else Fixed.AmberText,
                 accentFill = if (light) Fixed.AmberDeep else Fixed.Amber,
@@ -72,9 +111,19 @@ data class SnowingColors(
                 ctaDot = if (light) Fixed.Amber else Fixed.InkOnAmber,
                 ctaGlow = if (light) Fixed.InkDark.copy(alpha = 0.3f) else Fixed.Amber.copy(alpha = 0.55f),
                 scrim = if (light) Fixed.ScrimLight.copy(alpha = 0.94f) else Fixed.ScrimDark.copy(alpha = 0.90f),
+                sheet = Fixed.Sheet.copy(alpha = 0.72f),
+                sheetSolid = Fixed.Sheet.copy(alpha = 0.94f),
+                sheetScrim = Fixed.SheetScrim.copy(alpha = 0.38f),
+                sheetHighlight = Color.White.copy(alpha = 0.10f),
+                sheetHandle = ink.copy(alpha = 0.32f),
                 onDrift = Fixed.InkOnAmber,
                 onDriftSoft = Fixed.InkOnDriftSoft,
-                house = Fixed.House,
+                haze = mix(sky.skyLow, sky.hillFar, 0.55f),
+                cabin = mix(sky.hillNear, Fixed.SceneInk, 0.45f),
+                gable = mix(sky.hillNear, Fixed.SceneInk, 0.60f),
+                logs = mix(sky.hillNear, sky.driftBottom, 0.25f).copy(alpha = 0.35f),
+                windowBase = mix(sky.hillNear, Fixed.SceneInk, 0.70f),
+                paw = mix(sky.driftBottom, sky.hillNear, 0.45f).copy(alpha = 0.6f),
                 windowLight = Fixed.Amber,
                 sunDisc = Fixed.SunDisc,
                 sunGlow = Fixed.SunGlow,
@@ -114,6 +163,28 @@ data class SnowingSpacing(
     val pageTopStats: Dp = 76.dp,
     val pageTopSnow: Dp = 96.dp,
     val pageTopMoods: Dp = 56.dp,
+    // A panel over the scene (design 6.2).
+    val sheetSide: Dp = 26.dp,
+    val sheetBottom: Dp = 34.dp,
+    val sheetHandleTop: Dp = 12.dp,
+    val sheetHandleGap: Dp = 22.dp,
+    /** Between a heading's small label and its title. */
+    val headingGap: Dp = 10.dp,
+    /** Between paragraphs of running text. */
+    val paragraph: Dp = 10.dp,
+    /** Above a divider that ends a block, and below it. */
+    val dividerAbove: Dp = 20.dp,
+    val dividerBelow: Dp = 18.dp,
+    /** Between numbered steps. */
+    val stepGap: Dp = 12.dp,
+    /** Vertical padding of rows divided by lines in a panel. */
+    val itemRow: Dp = 16.dp,
+    /** Above the panel's main button. */
+    val sheetAction: Dp = 26.dp,
+    /** A preview indented under a numbered step, and its inner padding. */
+    val previewInset: Dp = 36.dp,
+    val previewPaddingV: Dp = 9.dp,
+    val previewPaddingH: Dp = 12.dp,
 )
 
 @Immutable
@@ -171,14 +242,41 @@ data class SnowingSizes(
     val tabDot: Dp = 5.dp,
     /** Content scrolling up under the tabs fades out over this distance. */
     val underTabsFade: Dp = 28.dp,
+    /** The filled main button and the soft glow around it. */
+    val button: Dp = 56.dp,
+    val buttonGlow: Dp = 36.dp,
+    /** The panel's drag handle. */
+    val handleWidth: Dp = 36.dp,
+    val handleHeight: Dp = 4.dp,
+    /** Blur of the scene seen through a panel (API 31+). */
+    val sheetBlur: Dp = 22.dp,
+    /** How far down the panel's lit top edge fades out, about its corner radius. */
+    val sheetEdgeFade: Dp = 28.dp,
+    /** Rings: around a step's number, around a row's icon, around the footnote's "i". */
+    val stepRing: Dp = 24.dp,
+    val iconRing: Dp = 40.dp,
+    val infoRing: Dp = 16.dp,
+    val ringStroke: Dp = 1.5.dp,
+    /** Line icons drawn in code: a row's icon, and the small check of a done state. */
+    val glyph: Dp = 20.dp,
+    val checkGlyph: Dp = 14.dp,
+    /** The app's icon in a preview of a system setting. */
+    val appIcon: Dp = 22.dp,
 )
 
-/** No rounded containers in design 6a: only circles, pills and the caps of ticks. */
+/**
+ * No rounded containers in design 6a: only circles, pills and the caps of ticks. The
+ * onboarding panel is ours, outside the design (ADR-0011).
+ */
 @Immutable
 data class SnowingShapes(
     val circle: Shape = CircleShape,
     val pill: Shape = RoundedCornerShape(percent = 50),
     val tick: Shape = RoundedCornerShape(2.dp),
+    val sheet: Shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+    /** A small filled area, e.g. a preview of a system setting. */
+    val well: Shape = RoundedCornerShape(12.dp),
+    val appIcon: Shape = RoundedCornerShape(6.dp),
 )
 
 /**
@@ -192,6 +290,26 @@ data class SnowingTypography(
     /** The big number on the Stats screen. */
     val statsHero: TextStyle,
     val ctaLabel: TextStyle,
+    /** A sentence-long title of a screen without a hero, e.g. an onboarding step. */
+    val pageTitle: TextStyle,
+    /** Small capitals in the accent above a title, e.g. "Step 1 of 2". */
+    val stepLabel: TextStyle,
+    /** Running text of a panel. */
+    val paragraph: TextStyle,
+    /** A numbered step's text and its number. */
+    val stepText: TextStyle,
+    val stepNumber: TextStyle,
+    /** A row of a list in a panel: its title, its explanation, and a short note in full ink. */
+    val itemTitle: TextStyle,
+    val itemBody: TextStyle,
+    val itemNote: TextStyle,
+    /** An action shown as accent text under a row. */
+    val inlineAction: TextStyle,
+    /** A quiet secondary action, e.g. "Not now". */
+    val quietAction: TextStyle,
+    val footnote: TextStyle,
+    /** The label of a filled button. */
+    val button: TextStyle,
     val listItem: TextStyle,
     val sectionHeader: TextStyle,
     /** Wind value. */

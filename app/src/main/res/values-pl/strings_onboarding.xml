@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Onboarding 6.2 - zastępuje poprzednie teksty onboardingu. %1$s = etykieta z kodu (akcja powiadomienia / nazwa kafelka) -->
+<resources>
+    <string name="ob_step_of">Krok %1$d z %2$d</string>
+
+    <!-- Krok 1: zgoda na nakładkę -->
+    <string name="ob_overlay_title">Niech pada wszędzie</string>
+    <string name="ob_overlay_body">Snowing pokazuje śnieg nad innymi aplikacjami: na ekranie głównym, w czacie, wszędzie. Płatki nie przeszkadzają, bo stukasz przez nie jak zwykle.</string>
+    <string name="ob_overlay_why">Do tego Android potrzebuje jednej zgody: %1$s. Używamy jej tylko do śniegu.</string>
+    <string name="ob_overlay_perm_name">„Wyświetlanie nad innymi aplikacjami”</string>
+    <string name="ob_overlay_guide_1">Otworzy się lista aplikacji</string>
+    <string name="ob_overlay_guide_2">Znajdź Snowing i włącz przełącznik</string>
+    <string name="ob_overlay_guide_3">Wróć tu strzałką wstecz</string>
+    <string name="ob_overlay_guide_legacy">Włącz przełącznik i wróć tu strzałką wstecz.</string>
+    <string name="ob_overlay_open">Otwórz ustawienia</string>
+    <string name="ob_not_now">Nie teraz</string>
+
+    <!-- Krok 2: jak zatrzymać -->
+    <string name="ob_stop_title">Wyłączysz go jednym ruchem</string>
+    <string name="ob_notif_title">Powiadomienie</string>
+    <string name="ob_notif_body">Gdy pada, w powiadomieniach czeka przycisk „%1$s”.</string>
+    <string name="ob_notif_action">Włącz powiadomienia</string>
+    <string name="ob_notif_done">Włączone</string>
+    <string name="ob_tile_title">Kafelek „%1$s”</string>
+    <string name="ob_tile_body">Przesuń palcem z góry ekranu i stuknij, żeby włączyć albo wyłączyć.</string>
+    <string name="ob_tile_action">Dodaj kafelek</string>
+    <string name="ob_tile_done">Dodany</string>
+    <string name="ob_tile_manual">Dodasz go w edycji szybkich ustawień (ikona ołówka).</string>
+    <string name="ob_secure_note">Na kilku ekranach Google, np. w ustawieniach konta, Android dla bezpieczeństwa nie przepuszcza stuknięć przez śnieg. Tam zatrzymasz go z powiadomienia albo kafelka.</string>
+    <string name="ob_go">Niech pada</string>
+</resources>
