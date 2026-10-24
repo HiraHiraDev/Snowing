@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
  *     adb shell am start -n com.hirahira.snowing/.debug.PerfControlActivity \
  *         --ez snow true --es mood blizzard --ez bokeh true --es quality low
  *
+ * `hud` and `tracer` switch the debug aids (ADR-0002 protocol).
  * `mood` takes a MoodChoice key. `override` with `speed`, `layers`, `turbulence` and `gusts`
  * replaces the mood's hidden parameters.
  *
@@ -38,6 +39,7 @@ class PerfControlActivity : ComponentActivity() {
                         turbulence = extras.floatOr(EXTRA_TURBULENCE, current.lab.turbulence),
                         gusts = extras.floatOr(EXTRA_GUSTS, current.lab.gusts),
                         showHud = extras.booleanOr(EXTRA_HUD, current.lab.showHud),
+                        showTracer = extras.booleanOr(EXTRA_TRACER, current.lab.showTracer),
                         foreground = extras.booleanOr(EXTRA_BOKEH, current.lab.foreground),
                         quality = extras.qualityOr(current.lab.quality),
                     ),
@@ -71,6 +73,7 @@ class PerfControlActivity : ComponentActivity() {
         const val EXTRA_TURBULENCE = "turbulence"
         const val EXTRA_GUSTS = "gusts"
         const val EXTRA_HUD = "hud"
+        const val EXTRA_TRACER = "tracer"
         const val EXTRA_BOKEH = "bokeh"
         const val EXTRA_QUALITY = "quality"
     }
