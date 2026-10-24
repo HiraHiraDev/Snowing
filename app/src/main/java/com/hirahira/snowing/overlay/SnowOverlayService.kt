@@ -76,7 +76,7 @@ class SnowOverlayService : Service() {
         ServiceCompat.startForeground(
             this,
             OverlayNotifications.NOTIFICATION_ID,
-            OverlayNotifications.build(this),
+            OverlayNotifications.build(this, appContainer.snowOffAction),
             foregroundServiceType(),
         )
         if (!Settings.canDrawOverlays(this)) {

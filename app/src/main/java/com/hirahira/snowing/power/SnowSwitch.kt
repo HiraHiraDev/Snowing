@@ -3,12 +3,13 @@ package com.hirahira.snowing.power
 import com.hirahira.snowing.overlay.OverlayController
 import com.hirahira.snowing.overlay.StopStyle
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
 /**
  * The one way to turn snow on and off. Records the user's choice first, then
- * moves the overlay to match. Every entry point (panel today; tile, widget
- * and scheduler later) goes through here, so they can never disagree.
+ * moves the overlay to match. Every entry point (panel, notification, tile;
+ * widget and scheduler later) goes through here, so they can never disagree.
  * See docs/adr/0005-snow-state.md.
  */
 class SnowSwitch(
@@ -17,14 +18,24 @@ class SnowSwitch(
 ) {
     val enabled: Flow<Boolean> = stateRepository.enabled
 
+    /**
+     * Snow is wanted and the overlay is really up. Most UI shows [enabled] and the app
+     * reconciles when opened; an entry point that never reconciles (the tile) shows this,
+     * or it would stay lit after the overlay died (force stop, a refused background start).
+     */
+    val snowing: Flow<Boolean> = combine(stateRepository.enabled, overlay.isRunning) { wanted, running -> wanted && running }
+
     fun hasPermission(): Boolean = overlay.hasPermission()
 
-    /** @return false when the overlay permission is missing; nothing changes then. */
+    /**
+     * @return false when the app has to be opened to finish: the overlay permission
+     * is missing (nothing changes then), or Android refused a start from the
+     * background (the choice is kept and [reconcile] starts snow once the app is open).
+     */
     suspend fun turnOn(): Boolean {
         if (!overlay.hasPermission()) return false
         stateRepository.setEnabled(true)
-        overlay.start()
-        return true
+        return overlay.start()
     }
 
     /** [style]: gently from the app, at once from the tile and the notification (ADR-0006 §Zmiana). */
@@ -33,7 +44,7 @@ class SnowSwitch(
         overlay.stop(style)
     }
 
-    /** @return false when turning on failed for lack of permission. */
+    /** @return false when turning on needs the app opened, see [turnOn]. */
     suspend fun toggle(): Boolean =
         if (stateRepository.enabled.first()) {
             turnOff()

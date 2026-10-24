@@ -52,6 +52,14 @@
     <string name="notification_channel_name">Snowfall</string>
     <string name="notification_title">It\'s snowing</string>
     <string name="notification_text">Tap to adjust the snow</string>
+    <string name="notification_stop">Stop the snow</string>
+
+    <string name="tile_label">Snow</string>
+    <!-- Under the tile's name on a large tile, and for TalkBack. -->
+    <string name="tile_needs_permission">Needs permission</string>
+    <string name="tile_state_snowing">Snowing, %1$s</string>
+    <string name="tile_state_off">Off</string>
+
 
     <!-- Prototype lab, debug builds only. Not translated on purpose. -->
     <string name="lab_title" translatable="false">Prototype lab</string>

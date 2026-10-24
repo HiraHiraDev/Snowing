@@ -20,7 +20,7 @@ internal object OverlayNotifications {
         NotificationManagerCompat.from(context).createNotificationChannel(channel)
     }
 
-    fun build(context: Context): Notification {
+    fun build(context: Context, stopSnow: PendingIntent): Notification {
         // Launcher intent instead of a hard reference to an Activity class.
         val openApp = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
             PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -30,6 +30,7 @@ internal object OverlayNotifications {
             .setContentTitle(context.getString(R.string.notification_title))
             .setContentText(context.getString(R.string.notification_text))
             .setContentIntent(openApp)
+            .addAction(R.drawable.ic_stat_snow, context.getString(R.string.notification_stop), stopSnow)
             .setOngoing(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)

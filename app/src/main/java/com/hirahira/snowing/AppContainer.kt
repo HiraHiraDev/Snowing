@@ -1,5 +1,6 @@
 package com.hirahira.snowing
 
+import android.app.PendingIntent
 import android.content.Context
 import android.os.SystemClock
 import androidx.datastore.preferences.preferencesDataStore
@@ -10,6 +11,7 @@ import com.hirahira.snowing.overlay.DeviceSignals
 import com.hirahira.snowing.overlay.OverlayController
 import com.hirahira.snowing.overlay.ServiceOverlayController
 import com.hirahira.snowing.power.DataStoreSnowStateRepository
+import com.hirahira.snowing.power.SnowOffReceiver
 import com.hirahira.snowing.power.SnowSwitch
 import com.hirahira.snowing.pro.Entitlements
 import com.hirahira.snowing.pro.UnlockedEntitlements
@@ -60,6 +62,10 @@ class AppContainer(context: Context) {
         stateRepository = DataStoreSnowStateRepository(appContext.snowStateDataStore),
         overlay = overlayController,
     )
+
+    /** The notification's stop action; overlay must not know [SnowSwitch], so it gets the intent from here. */
+    val snowOffAction: PendingIntent
+        get() = SnowOffReceiver.pendingIntent(appContext)
 }
 
 val Context.appContainer: AppContainer

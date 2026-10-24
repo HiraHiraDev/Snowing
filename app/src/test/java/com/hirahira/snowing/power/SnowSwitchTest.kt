@@ -3,6 +3,7 @@ package com.hirahira.snowing.power
 import com.hirahira.snowing.overlay.StopStyle
 import com.hirahira.snowing.testing.FakeOverlayController
 import com.hirahira.snowing.testing.FakeSnowStateRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -28,6 +29,19 @@ class SnowSwitchTest {
         assertFalse(snowSwitch.turnOn())
         assertFalse(state.state.value)
         assertFalse(overlay.isRunning.value)
+    }
+
+    @Test
+    fun `a start refused in the background keeps the choice for reconcile`() = runTest {
+        overlay.refuseStart = true
+        assertFalse(snowSwitch.turnOn())
+        assertTrue(state.state.value)
+        assertFalse(overlay.isRunning.value)
+
+        // The app comes to the front.
+        overlay.refuseStart = false
+        snowSwitch.reconcile()
+        assertTrue(overlay.isRunning.value)
     }
 
     @Test
@@ -81,6 +95,25 @@ class SnowSwitchTest {
         overlay.start()
         snowSwitch.reconcile()
         assertFalse(overlay.isRunning.value)
+    }
+
+    @Test
+    fun `snowing needs both the choice and a running overlay`() = runTest {
+        snowSwitch.turnOn()
+        assertTrue(snowSwitch.snowing.first())
+
+        // Force stop: the overlay is gone, the choice stays.
+        overlay.isRunning.value = false
+        assertTrue(state.state.value)
+        assertFalse(snowSwitch.snowing.first())
+    }
+
+    @Test
+    fun `while the last flakes fall out it no longer counts as snowing`() = runTest {
+        snowSwitch.turnOn()
+        state.setEnabled(false)
+        assertTrue(overlay.isRunning.value)
+        assertFalse(snowSwitch.snowing.first())
     }
 
     @Test

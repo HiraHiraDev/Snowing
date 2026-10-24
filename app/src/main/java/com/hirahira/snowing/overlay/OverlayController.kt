@@ -25,7 +25,8 @@ interface OverlayController {
     /** "Display over other apps", granted in system settings. */
     fun hasPermission(): Boolean
 
-    fun start()
+    /** @return false when Android refused to start the service from the background. */
+    fun start(): Boolean
 
     fun stop(style: StopStyle)
 }
@@ -38,9 +39,16 @@ class ServiceOverlayController(context: Context) : OverlayController {
 
     override fun hasPermission(): Boolean = Settings.canDrawOverlays(appContext)
 
-    override fun start() {
-        if (!hasPermission()) return
-        ContextCompat.startForegroundService(appContext, serviceIntent)
+    override fun start(): Boolean {
+        if (!hasPermission()) return false
+        return try {
+            ContextCompat.startForegroundService(appContext, serviceIntent)
+            true
+        } catch (e: IllegalStateException) {
+            // ForegroundServiceStartNotAllowedException on API 31+: no exemption for this caller.
+            Log.w(TAG, "Start refused from the background", e)
+            false
+        }
     }
 
     override fun stop(style: StopStyle) {

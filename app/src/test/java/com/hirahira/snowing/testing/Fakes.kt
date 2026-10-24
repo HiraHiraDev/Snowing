@@ -39,11 +39,16 @@ class FakeOverlayController(var permission: Boolean = true) : OverlayController 
     var startCalls = 0
         private set
 
+    /** Android refusing a foreground-service start from the background. */
+    var refuseStart = false
+
     override fun hasPermission() = permission
 
-    override fun start() {
+    override fun start(): Boolean {
         startCalls++
+        if (refuseStart) return false
         isRunning.value = true
+        return true
     }
 
     var lastStop: StopStyle? = null

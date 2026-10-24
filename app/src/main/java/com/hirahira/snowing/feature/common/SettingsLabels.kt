@@ -1,5 +1,6 @@
 package com.hirahira.snowing.feature.common
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.hirahira.snowing.R
@@ -11,15 +12,17 @@ import com.hirahira.snowing.settings.WindStrength
 // What the user sees for each setting value; shared by every screen that shows one.
 
 @Composable
-fun MoodChoice.displayName(): String = stringResource(
-    when (this) {
-        MoodChoice.FIRST_SNOW -> R.string.mood_first_snow
-        MoodChoice.FLUFF -> R.string.mood_fluff
-        MoodChoice.HEAVY -> R.string.mood_heavy
-        MoodChoice.BLIZZARD -> R.string.mood_blizzard
-        MoodChoice.CUSTOM -> R.string.mood_custom
-    },
-)
+fun MoodChoice.displayName(): String = stringResource(nameRes())
+
+/** For text outside Compose, e.g. the Quick Settings tile. */
+@StringRes
+fun MoodChoice.nameRes(): Int = when (this) {
+    MoodChoice.FIRST_SNOW -> R.string.mood_first_snow
+    MoodChoice.FLUFF -> R.string.mood_fluff
+    MoodChoice.HEAVY -> R.string.mood_heavy
+    MoodChoice.BLIZZARD -> R.string.mood_blizzard
+    MoodChoice.CUSTOM -> R.string.mood_custom
+}
 
 @Composable
 fun FlakeSize.displayName(): String = stringResource(
