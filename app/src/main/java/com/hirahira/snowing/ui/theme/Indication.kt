@@ -10,8 +10,10 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.node.invalidateDraw
 import kotlinx.coroutines.launch
 
@@ -28,7 +30,9 @@ internal object PressFade : IndicationNodeFactory {
     override fun hashCode(): Int = System.identityHashCode(this)
 }
 
-private class PressFadeNode(private val interactionSource: InteractionSource) : Modifier.Node(), DrawModifierNode {
+private class PressFadeNode(
+    private val interactionSource: InteractionSource,
+) : Modifier.Node(), DrawModifierNode, CompositionLocalConsumerModifierNode {
     private val alpha = Animatable(1f)
     private val layerPaint = Paint()
 
@@ -36,14 +40,17 @@ private class PressFadeNode(private val interactionSource: InteractionSource) : 
         coroutineScope.launch {
             interactionSource.interactions.collect { interaction ->
                 val (target, millis) = when (interaction) {
-                    is PressInteraction.Press -> PRESSED_ALPHA to PRESS_MILLIS
-                    is PressInteraction.Release, is PressInteraction.Cancel -> 1f to RELEASE_MILLIS
+                    is PressInteraction.Press -> PRESSED_ALPHA to motion().pressMillis
+                    is PressInteraction.Release, is PressInteraction.Cancel -> 1f to motion().releaseMillis
                     else -> return@collect
                 }
                 launch { alpha.animateTo(target, tween(millis)) { invalidateDraw() } }
             }
         }
     }
+
+    // Read when a touch comes, not on attach, so a theme provided later still applies.
+    private fun motion() = currentValueOf(LocalMotion)
 
     override fun ContentDrawScope.draw() {
         val value = alpha.value
@@ -61,5 +68,3 @@ private class PressFadeNode(private val interactionSource: InteractionSource) : 
 }
 
 private const val PRESSED_ALPHA = 0.55f
-private const val PRESS_MILLIS = 90
-private const val RELEASE_MILLIS = 220

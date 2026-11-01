@@ -94,6 +94,7 @@ fun HomeScreen(
                         PageTabs(
                             titles = pages.map { stringResource(it.titleRes()) },
                             selectedIndex = pagerState.currentPage,
+                            position = pageOffset,
                             onSelect = { scope.launch { pagerState.animateScrollToPage(it) } },
                             onLongPress = onPageLongPress?.let { { index -> it(pages[index]) } },
                             modifier = Modifier

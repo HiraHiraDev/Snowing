@@ -14,6 +14,7 @@ private val LocalColors = staticCompositionLocalOf<SnowingColors> { error("Snowi
 private val LocalSpacing = staticCompositionLocalOf { SnowingSpacing() }
 private val LocalSizes = staticCompositionLocalOf { SnowingSizes() }
 private val LocalShapes = staticCompositionLocalOf { SnowingShapes() }
+internal val LocalMotion = staticCompositionLocalOf { SnowingMotion() }
 private val LocalTypography = staticCompositionLocalOf<SnowingTypography> { error("SnowingTheme not provided") }
 
 /** Access point for tokens: `SnowingTheme.colors.ink`, `SnowingTheme.spacing.m`, … */
@@ -26,6 +27,8 @@ object SnowingTheme {
         @Composable @ReadOnlyComposable get() = LocalSizes.current
     val shapes: SnowingShapes
         @Composable @ReadOnlyComposable get() = LocalShapes.current
+    val motion: SnowingMotion
+        @Composable @ReadOnlyComposable get() = LocalMotion.current
     val typography: SnowingTypography
         @Composable @ReadOnlyComposable get() = LocalTypography.current
 }
@@ -42,6 +45,7 @@ fun SnowingTheme(
     spacing: SnowingSpacing = SnowingSpacing(),
     sizes: SnowingSizes = SnowingSizes(),
     shapes: SnowingShapes = SnowingShapes(),
+    motion: SnowingMotion = SnowingMotion(),
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(
@@ -49,6 +53,7 @@ fun SnowingTheme(
         LocalSpacing provides spacing,
         LocalSizes provides sizes,
         LocalShapes provides shapes,
+        LocalMotion provides motion,
         LocalTypography provides typography,
     ) {
         MaterialTheme(colorScheme = colors.toMaterialColorScheme()) {

@@ -1,5 +1,9 @@
 package com.hirahira.snowing.ui.theme
 
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Immutable
@@ -263,6 +267,34 @@ data class SnowingSizes(
     /** The app's icon in a preview of a system setting. */
     val appIcon: Dp = 22.dp,
 )
+
+/**
+ * How controls move (owner's wish 2026-10-17; the design gives no motion): springs that run a
+ * little past their target and settle back, so a change feels physical. Compose finishes every
+ * animation at once when the system's "Remove animations" is on.
+ */
+@Immutable
+data class SnowingMotion(
+    /** An indicator moving to a new place: an option's underline, the tab dot, the wind arrow. */
+    val glide: MotionSpring = MotionSpring(dampingRatio = 0.6f, stiffness = 420f),
+    /** Something that grows or appears: ruler marks, the picked dot's ring, the start button's mark. */
+    val pop: MotionSpring = MotionSpring(dampingRatio = 0.45f, stiffness = 650f),
+    /** The wind dial's needle: heavier, it trails the finger and swings a little past. */
+    val needle: MotionSpring = MotionSpring(dampingRatio = 0.55f, stiffness = 260f),
+    /** A picked option taking or losing the accent color; the start button's fill and glow. */
+    val tintMillis: Int = 160,
+    /** Anything tappable dims while pressed and comes back on release. */
+    val pressMillis: Int = 90,
+    val releaseMillis: Int = 220,
+) {
+    fun <T> tint(): TweenSpec<T> = tween(tintMillis)
+}
+
+/** Below 1 [dampingRatio] overshoots: 0.6 runs about 10% past, 0.45 about 20%. */
+@Immutable
+data class MotionSpring(val dampingRatio: Float, val stiffness: Float) {
+    fun <T> spec(): SpringSpec<T> = spring(dampingRatio, stiffness)
+}
 
 /**
  * No rounded containers in design 6a: only circles, pills and the caps of ticks. The

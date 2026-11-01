@@ -1,7 +1,7 @@
 package com.hirahira.snowing.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,8 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -56,7 +59,8 @@ fun PrimaryButton(
 /**
  * The big round start / stop button with its label beside it (design 6a). Idle: a filled,
  * glowing circle with a dot. [running]: an outlined circle with a square. It sits on the
- * light snowdrift, so its ink is the drift's whatever the sky.
+ * light snowdrift, so its ink is the drift's whatever the sky. Between the two the fill and
+ * glow fade while one mark shrinks away and the other pops in, a little past its size.
  */
 @Composable
 fun StartStopButton(
@@ -68,6 +72,8 @@ fun StartStopButton(
 ) {
     val colors = SnowingTheme.colors
     val sizes = SnowingTheme.sizes
+    // 1 idle, 0 running; the spring runs past both ends, which is the marks' pop.
+    val idle = animateFloatAsState(if (running) 0f else 1f, SnowingTheme.motion.pop.spec(), label = "start stop")
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -78,20 +84,27 @@ fun StartStopButton(
         Box(
             modifier = Modifier
                 .size(sizes.ctaButton)
-                .then(
-                    if (running) {
-                        Modifier.border(sizes.ctaOutline, colors.onDrift, SnowingTheme.shapes.circle)
-                    } else {
-                        Modifier.glow(colors.ctaGlow, sizes.ctaGlow).background(colors.ctaFill, SnowingTheme.shapes.circle)
-                    },
-                ),
+                .glow(colors.ctaGlow, sizes.ctaGlow) { idle.value.coerceIn(0f, 1f) }
+                .drawBehind {
+                    val filled = idle.value.coerceIn(0f, 1f)
+                    drawCircle(colors.ctaFill, alpha = filled)
+                    val outline = sizes.ctaOutline.toPx()
+                    drawCircle(colors.onDrift, radius = (size.minDimension - outline) / 2, style = Stroke(outline), alpha = 1f - filled)
+                },
             contentAlignment = Alignment.Center,
         ) {
-            if (running) {
-                Box(Modifier.size(sizes.ctaStop).background(colors.onDrift, SnowingTheme.shapes.tick))
-            } else {
-                Box(Modifier.size(sizes.ctaDot).background(colors.ctaDot, SnowingTheme.shapes.circle))
-            }
+            Box(
+                Modifier
+                    .size(sizes.ctaStop)
+                    .graphicsLayer { scale(1f - idle.value) }
+                    .background(colors.onDrift, SnowingTheme.shapes.tick),
+            )
+            Box(
+                Modifier
+                    .size(sizes.ctaDot)
+                    .graphicsLayer { scale(idle.value) }
+                    .background(colors.ctaDot, SnowingTheme.shapes.circle),
+            )
         }
         Column(verticalArrangement = Arrangement.spacedBy(SnowingTheme.spacing.xs)) {
             Text(text = label, style = SnowingTheme.typography.ctaLabel, color = colors.onDrift)
@@ -103,10 +116,11 @@ fun StartStopButton(
 }
 
 // A CSS-like glow: [color] at the circle's edge, fading out over [radius] beyond it.
-private fun Modifier.glow(color: Color, radius: Dp) = drawBehind {
+private fun Modifier.glow(color: Color, radius: Dp, strength: () -> Float) = drawBehind {
     val inner = size.minDimension / 2
     val outer = inner + radius.toPx()
     drawCircle(
+        alpha = strength(),
         brush = Brush.radialGradient(
             0f to color,
             inner / outer to color,
@@ -200,4 +214,12 @@ fun SettingSwitch(
         ControlLabel(label, Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = null)
     }
+}
+
+// A spring may run below zero; a mark that has shrunk away stays gone.
+private fun GraphicsLayerScope.scale(by: Float) {
+    val scale = by.coerceAtLeast(0f)
+    scaleX = scale
+    scaleY = scale
+    alpha = if (scale > 0f) 1f else 0f
 }

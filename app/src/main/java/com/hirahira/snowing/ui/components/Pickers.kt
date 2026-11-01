@@ -1,5 +1,8 @@
 package com.hirahira.snowing.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,14 +18,18 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.hirahira.snowing.ui.theme.SnowingTheme
 
 // Pickers take the options themselves (an enum's entries, a list of moods) rather than
@@ -30,7 +37,8 @@ import com.hirahira.snowing.ui.theme.SnowingTheme
 
 /**
  * A few mutually exclusive options side by side, optionally under a name (design 6a): equal
- * cells over a line, the picked one in the accent color and underlined.
+ * cells over a line, the picked one in the accent color and underlined. The underline glides
+ * to a new pick, a little past it and back.
  */
 @Composable
 fun <T> OptionPicker(
@@ -43,8 +51,13 @@ fun <T> OptionPicker(
     enabled: Boolean = true,
 ) {
     val colors = SnowingTheme.colors
+    val motion = SnowingTheme.motion
+    val haptics = rememberControlHaptics()
     // Five cells are narrow, so their names step down a size.
     val style = if (options.size > ROOMY_OPTIONS) SnowingTheme.typography.metaStrong else SnowingTheme.typography.label
+    val underlineHeight = SnowingTheme.sizes.optionUnderline
+    val pickedIndex = options.indexOf(selected)
+    val underlineAt = animateFloatAsState(pickedIndex.toFloat(), motion.glide.spec(), label = "underline")
     Column(modifier.fillMaxWidth().enabledLook(enabled)) {
         if (label != null) ControlLabel(label)
         Box(Modifier.fillMaxWidth()) {
@@ -53,31 +66,46 @@ fun <T> OptionPicker(
                 thickness = SnowingTheme.sizes.line,
                 color = colors.line,
             )
-            Row(Modifier.fillMaxWidth().selectableGroup()) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .selectableGroup()
+                    .drawBehind {
+                        if (pickedIndex < 0) return@drawBehind
+                        val cell = size.width / options.size
+                        val width = cell * UNDERLINE_WIDTH
+                        val height = underlineHeight.toPx()
+                        drawRect(
+                            color = colors.accentFill,
+                            topLeft = Offset(cell * (underlineAt.value + 0.5f) - width / 2, size.height - height),
+                            size = Size(width, height),
+                        )
+                    },
+            ) {
                 for (option in options) {
                     val picked = option == selected
+                    val tint by animateColorAsState(if (picked) colors.accentText else colors.inkSoft, motion.tint(), label = "option")
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(SnowingTheme.sizes.touchTarget)
-                            .selectable(selected = picked, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(option) }),
+                            .selectable(
+                                selected = picked,
+                                enabled = enabled,
+                                role = Role.RadioButton,
+                                onClick = {
+                                    if (!picked) haptics.pick()
+                                    onSelect(option)
+                                },
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = optionLabel(option),
                             style = style,
-                            color = if (picked) colors.accentText else colors.inkSoft,
+                            color = tint,
                             maxLines = 1,
                         )
-                        if (picked) {
-                            Box(
-                                Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .fillMaxWidth(UNDERLINE_WIDTH)
-                                    .height(SnowingTheme.sizes.optionUnderline)
-                                    .background(colors.accentFill),
-                            )
-                        }
                     }
                 }
             }
@@ -92,7 +120,7 @@ private const val UNDERLINE_WIDTH = 0.64f
 
 /**
  * Options shown as dots of different sizes beside a name, e.g. flake size. The picked dot
- * takes the accent color and a soft ring.
+ * takes the accent color and a soft ring that springs out around it.
  */
 @Composable
 fun <T> DotPicker(
@@ -107,6 +135,8 @@ fun <T> DotPicker(
 ) {
     val colors = SnowingTheme.colors
     val sizes = SnowingTheme.sizes
+    val motion = SnowingTheme.motion
+    val haptics = rememberControlHaptics()
     Row(
         modifier = modifier.fillMaxWidth().enabledLook(enabled),
         verticalAlignment = Alignment.CenterVertically,
@@ -116,10 +146,20 @@ fun <T> DotPicker(
             for (option in options) {
                 val picked = option == selected
                 val description = optionLabel(option)
+                val halo = animateDpAsState(if (picked) sizes.dotHalo else 0.dp, motion.pop.spec(), label = "halo")
+                val fill by animateColorAsState(if (picked) colors.accentFill else colors.tickDim, motion.tint(), label = "dot")
                 Box(
                     modifier = Modifier
                         .size(sizes.touchTarget)
-                        .selectable(selected = picked, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(option) })
+                        .selectable(
+                            selected = picked,
+                            enabled = enabled,
+                            role = Role.RadioButton,
+                            onClick = {
+                                if (!picked) haptics.pick()
+                                onSelect(option)
+                            },
+                        )
                         .semantics { contentDescription = description },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -127,9 +167,11 @@ fun <T> DotPicker(
                         Modifier
                             .size(dotSize(option))
                             .drawBehind {
-                                if (picked) drawCircle(colors.accentHalo, radius = size.minDimension / 2 + sizes.dotHalo.toPx())
+                                // The spring undershoots below zero as the ring leaves.
+                                val ring = halo.value.toPx()
+                                if (ring > 0f) drawCircle(colors.accentHalo, radius = size.minDimension / 2 + ring)
                             }
-                            .background(if (picked) colors.accentFill else colors.tickDim, SnowingTheme.shapes.circle),
+                            .background(fill, SnowingTheme.shapes.circle),
                     )
                 }
             }
@@ -150,9 +192,15 @@ fun <T> ChoiceList(
     modifier: Modifier = Modifier,
     trailing: @Composable (T) -> Unit = {},
 ) {
+    val haptics = rememberControlHaptics()
     Column(modifier.fillMaxWidth().selectableGroup()) {
         for (item in items) {
-            ChoiceRow(title = title(item), selected = isSelected(item), onClick = { onSelect(item) }) {
+            val selected = isSelected(item)
+            val pick = {
+                if (!selected) haptics.pick()
+                onSelect(item)
+            }
+            ChoiceRow(title = title(item), selected = selected, onClick = pick) {
                 trailing(item)
             }
         }
@@ -166,6 +214,8 @@ private fun ChoiceRow(
     onClick: () -> Unit,
     trailing: @Composable () -> Unit,
 ) {
+    val colors = SnowingTheme.colors
+    val tint by animateColorAsState(if (selected) colors.accentText else colors.ink, SnowingTheme.motion.tint(), label = "choice")
     Column(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -179,7 +229,7 @@ private fun ChoiceRow(
                 text = title,
                 modifier = Modifier.weight(1f),
                 style = SnowingTheme.typography.listItem,
-                color = if (selected) SnowingTheme.colors.accentText else SnowingTheme.colors.ink,
+                color = tint,
             )
             trailing()
         }
