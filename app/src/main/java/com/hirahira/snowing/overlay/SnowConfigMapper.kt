@@ -17,8 +17,11 @@ object SnowTuning {
     /** Flakes per 10 000 dp². */
     val DensityRange = 0.6f..7f
 
-    /** Fall speed of the closest layer, dp/s. */
-    val SpeedRange = 25f..140f
+    /**
+     * Fall speed of the closest layer, dp/s. Flakes in a layer spread ±25% around it,
+     * so the fastest ones in front run a quarter above this.
+     */
+    val SpeedRange = 25f..115f
 
     /** Flake radius from the farthest to the closest layer, dp. */
     val RadiusRange = 1.2f..4.2f

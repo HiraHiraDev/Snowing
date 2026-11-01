@@ -77,10 +77,10 @@ object BuiltInMoods {
     // Calm moods point straight down, so a wind picked later starts from there.
     val FIRST_SNOW = Mood(
         intensity = 3, flakeSize = FlakeSize.S, windAngle = 180, windStrength = WindStrength.CALM,
-        speed = 3, layers = 3, turbulence = 0.4f, gusts = 0.3f,
+        speed = 2, layers = 3, turbulence = 0.4f, gusts = 0.3f,
     )
     val FLUFF = Mood(
-        intensity = 4, flakeSize = FlakeSize.S, windAngle = 180, windStrength = WindStrength.CALM,
+        intensity = 5, flakeSize = FlakeSize.S, windAngle = 180, windStrength = WindStrength.CALM,
         speed = 2, layers = 3, turbulence = 0.6f, gusts = 0.3f,
     )
     val HEAVY = Mood(
@@ -91,7 +91,7 @@ object BuiltInMoods {
     // The design gives no direction for the blizzard; 240° is a guess to tune in the lab.
     val BLIZZARD = Mood(
         intensity = 9, flakeSize = FlakeSize.L, windAngle = 240, windStrength = WindStrength.GUSTY,
-        speed = 8, layers = 5, turbulence = 0.7f, gusts = 0.8f,
+        speed = 7, layers = 5, turbulence = 0.7f, gusts = 0.8f,
     )
 
     /** Null for [MoodChoice.CUSTOM], which is the user's data. */
