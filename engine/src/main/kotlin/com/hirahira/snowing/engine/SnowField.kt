@@ -60,6 +60,7 @@ class SnowField(
     // Each flake samples the air only every `airStride` frames (~20 Hz), staggered by index.
     private var frame = 0
     private var airStride = 1
+    private val slope = FloatArray(2)
 
     private var fade = 1f
     private var fadeTarget = 1f
@@ -216,11 +217,9 @@ class SnowField(
 
         // Swirls: the curl of a noise field has no sources or sinks, so flakes
         // flow around each other instead of bunching up or spreading apart.
-        val sx = xDp / EDDY_SIZE_DP
-        val sy = yDp / EDDY_SIZE_DP
-        val sz = eddyClock + layerZ[i]
-        val dPsiDy = (Noise.at(sx, sy + CURL_STEP, sz) - Noise.at(sx, sy - CURL_STEP, sz)) / (2 * CURL_STEP)
-        val dPsiDx = (Noise.at(sx + CURL_STEP, sy, sz) - Noise.at(sx - CURL_STEP, sy, sz)) / (2 * CURL_STEP)
+        Noise.gradientXY(xDp / EDDY_SIZE_DP, yDp / EDDY_SIZE_DP, eddyClock + layerZ[i], slope)
+        val dPsiDx = slope[0]
+        val dPsiDy = slope[1]
 
         // Gusts: bursts that blow one way and die down, never a swing back. Each one travels
         // with the wind, so it reaches the upwind edge first, and lifts flakes as it passes.
@@ -235,14 +234,14 @@ class SnowField(
 
     /** 0 between gusts, rising smoothly to 1 at the height of one. */
     private fun gustAt(at: Float): Float {
-        val t = ((Noise.at(at, GUST_ROW, 0f) - GUST_ON) / (GUST_FULL - GUST_ON)).coerceIn(0f, 1f)
+        val t = ((Noise.at(at, GUST_ROW) - GUST_ON) / (GUST_FULL - GUST_ON)).coerceIn(0f, 1f)
         return t * t * (3f - 2f * t)
     }
 
     /** Calm moods get gusts from either side, but a gust never turns round halfway. */
     private fun turnWeatherSide() {
         if (gustAt(gustClock - width / pxPerDp / 2f / GUST_WIDTH_DP) > 0f) return
-        weatherSide = if (Noise.at(sideClock, SIDE_ROW, 0f) >= 0f) 1f else -1f
+        weatherSide = if (Noise.at(sideClock, SIDE_ROW) >= 0f) 1f else -1f
     }
 
     private fun wrapSideways(i: Int) {
@@ -408,8 +407,8 @@ class SnowField(
     }
 
     private fun render(i: Int) {
-        renderX[i] = posX[i] + Noise.at(flutterPhase[i], flutterRow[i], FLUTTER_SLICE) * flutterPx[i]
-        renderY[i] = posY[i] + Noise.at(flutterPhase[i], flutterRow[i], FLUTTER_SLICE_Y) * flutterPx[i] * FLUTTER_Y
+        renderX[i] = posX[i] + Noise.at(flutterPhase[i], flutterRow[i]) * flutterPx[i]
+        renderY[i] = posY[i] + Noise.at(flutterPhase[i], flutterRow[i] + FLUTTER_ROW_Y) * flutterPx[i] * FLUTTER_Y
     }
 
     private fun ensureCapacity(size: Int) {
@@ -478,7 +477,6 @@ class SnowField(
         // The air (ADR-0009). Swirls about a third of a phone screen wide, changing over ~15 s.
         private const val EDDY_SIZE_DP = 180f
         private const val EDDY_RATE = 0.07f
-        private const val CURL_STEP = 0.05f
         private const val VERTICAL_EDDY = 0.5f
         private const val LAYER_Z_STEP = 37.3f
 
@@ -501,8 +499,7 @@ class SnowField(
         // Flutter: an irregular wobble, not a pendulum.
         private const val FLUTTER_RATE_MIN = 0.25f
         private const val FLUTTER_RATE_MAX = 0.6f
-        private const val FLUTTER_SLICE = 13.1f
-        private const val FLUTTER_SLICE_Y = 29.7f
+        private const val FLUTTER_ROW_Y = 101.3f
         private const val FLUTTER_Y = 0.5f
 
         // How often a flake looks at the air, and the most frames it may skip.

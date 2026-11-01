@@ -47,7 +47,96 @@ internal object Noise {
         )
     }
 
+    /** The z = 0 slice of [at]: same values, half the work. */
+    fun at(x: Float, y: Float): Float {
+        val fx = floor(x)
+        val fy = floor(y)
+        val xi = fx.toInt() and 255
+        val yi = fy.toInt() and 255
+        val xf = x - fx
+        val yf = y - fy
+        val u = fade(xf)
+
+        val a = p[xi] + yi
+        val b = p[xi + 1] + yi
+
+        return lerp(
+            lerp(grad(p[p[a]], xf, yf, 0f), grad(p[p[b]], xf - 1, yf, 0f), u),
+            lerp(grad(p[p[a + 1]], xf, yf - 1, 0f), grad(p[p[b + 1]], xf - 1, yf - 1, 0f), u),
+            fade(yf),
+        )
+    }
+
+    /**
+     * Partial derivatives of [at] along x and y, written to [out] as (d/dx, d/dy).
+     * Analytic, so one pass replaces the four samples of a finite difference.
+     */
+    fun gradientXY(x: Float, y: Float, z: Float, out: FloatArray) {
+        val fx = floor(x)
+        val fy = floor(y)
+        val fz = floor(z)
+        val xi = fx.toInt() and 255
+        val yi = fy.toInt() and 255
+        val zi = fz.toInt() and 255
+        val xf = x - fx
+        val yf = y - fy
+        val zf = z - fz
+        val u = fade(xf)
+        val v = fade(yf)
+        val w = fade(zf)
+
+        val a = p[xi] + yi
+        val aa = p[a] + zi
+        val ab = p[a + 1] + zi
+        val b = p[xi + 1] + yi
+        val ba = p[b] + zi
+        val bb = p[b + 1] + zi
+        val h000 = p[aa] and 15
+        val h100 = p[ba] and 15
+        val h010 = p[ab] and 15
+        val h110 = p[bb] and 15
+        val h001 = p[aa + 1] and 15
+        val h101 = p[ba + 1] and 15
+        val h011 = p[ab + 1] and 15
+        val h111 = p[bb + 1] and 15
+
+        val g000 = grad(h000, xf, yf, zf)
+        val g100 = grad(h100, xf - 1, yf, zf)
+        val g010 = grad(h010, xf, yf - 1, zf)
+        val g110 = grad(h110, xf - 1, yf - 1, zf)
+        val g001 = grad(h001, xf, yf, zf - 1)
+        val g101 = grad(h101, xf - 1, yf, zf - 1)
+        val g011 = grad(h011, xf, yf - 1, zf - 1)
+        val g111 = grad(h111, xf - 1, yf - 1, zf - 1)
+
+        // The noise is a trilinear blend of corner values with weights u, v, w. Its slope is the
+        // same blend of the corner gradients plus the change of the weights themselves.
+        val k1 = g100 - g000
+        val k2 = g010 - g000
+        val k4 = g000 - g100 - g010 + g110
+        val k5 = g000 - g100 - g001 + g101
+        val k6 = g000 - g010 - g001 + g011
+        val k7 = -g000 + g100 + g010 - g110 + g001 - g101 - g011 + g111
+
+        out[0] = trilerp(GX, h000, h100, h010, h110, h001, h101, h011, h111, u, v, w) +
+            fadeSlope(xf) * (k1 + k4 * v + k5 * w + k7 * v * w)
+        out[1] = trilerp(GY, h000, h100, h010, h110, h001, h101, h011, h111, u, v, w) +
+            fadeSlope(yf) * (k2 + k4 * u + k6 * w + k7 * u * w)
+    }
+
+    private fun trilerp(
+        g: FloatArray,
+        h000: Int, h100: Int, h010: Int, h110: Int, h001: Int, h101: Int, h011: Int, h111: Int,
+        u: Float, v: Float, w: Float,
+    ): Float = lerp(
+        lerp(lerp(g[h000], g[h100], u), lerp(g[h010], g[h110], u), v),
+        lerp(lerp(g[h001], g[h101], u), lerp(g[h011], g[h111], u), v),
+        w,
+    )
+
     private fun fade(t: Float): Float = t * t * t * (t * (t * 6 - 15) + 10)
+
+    private fun fadeSlope(t: Float): Float = 30 * t * t * (t * (t - 2) + 1)
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + t * (b - a)
 
@@ -57,6 +146,10 @@ internal object Noise {
         val v = if (h < 4) y else if (h == 12 || h == 14) x else z
         return (if (h and 1 == 0) u else -u) + (if (h and 2 == 0) v else -v)
     }
+
+    // Each hash's gradient vector along x and y.
+    private val GX = FloatArray(16) { grad(it, 1f, 0f, 0f) }
+    private val GY = FloatArray(16) { grad(it, 0f, 1f, 0f) }
 
     // Perlin's reference permutation, repeated so p[i + 1] never needs a wrap.
     private val p: IntArray = run {
