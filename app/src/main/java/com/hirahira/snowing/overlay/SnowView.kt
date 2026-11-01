@@ -5,7 +5,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.os.Build
 import android.view.Choreographer
 import android.view.View
@@ -15,7 +14,6 @@ import com.hirahira.snowing.engine.FramePacer
 import com.hirahira.snowing.engine.QualityPolicy
 import com.hirahira.snowing.engine.SnowField
 import java.util.Locale
-import kotlin.math.roundToInt
 
 /** Debug aids drawn on top of the snow. */
 data class RenderOptions(
@@ -77,10 +75,8 @@ internal class SnowView(
     private var looping = false
     private var lastFrameNanos = 0L
 
-    private val flakeSprites = SnowSprites.flakes()
-    private val bokehSprites = SnowSprites.bokeh()
-    private val spritePaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val spriteBounds = RectF()
+    private val flakeBatch = SpriteBatch(SnowSprites.flakes())
+    private val bokehBatch = SpriteBatch(SnowSprites.bokeh())
     private val tracerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.RED
         style = Paint.Style.STROKE
@@ -136,8 +132,8 @@ internal class SnowView(
     }
 
     override fun onDraw(canvas: Canvas) {
-        drawField(canvas, snow, flakeSprites)
-        drawField(canvas, foreground, bokehSprites)
+        flakeBatch.draw(canvas, snow, height.toFloat())
+        bokehBatch.draw(canvas, foreground, height.toFloat())
         if (renderOptions.showTracer && snow.count > 0) {
             canvas.drawCircle(snow.x(0), snow.y(0), snow.radius(0) + TRACER_GAP_DP * density, tracerPaint)
         }
@@ -152,20 +148,6 @@ internal class SnowView(
         if (drainedReported || snow.isFalling || !snow.isEmpty || !foreground.isEmpty) return
         drainedReported = true
         onDrained?.invoke()
-    }
-
-    private fun drawField(canvas: Canvas, field: SnowField, sprites: SpriteAtlas) {
-        val bottom = height.toFloat()
-        for (i in 0 until field.count) {
-            val half = field.radius(i) * sprites.extent
-            val y = field.y(i)
-            // Most of the waiting band sits above the screen; skip what cannot be seen.
-            if (y + half < 0f || y - half > bottom) continue
-            val x = field.x(i)
-            spriteBounds.set(x - half, y - half, x + half, y + half)
-            spritePaint.alpha = (field.alpha(i) * 255).roundToInt()
-            canvas.drawBitmap(sprites.bitmap, sprites.cell(field.shape(i)), spriteBounds, spritePaint)
-        }
     }
 
     private fun drawHud(canvas: Canvas) {

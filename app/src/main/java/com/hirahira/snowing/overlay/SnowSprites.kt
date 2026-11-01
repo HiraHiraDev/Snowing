@@ -11,16 +11,24 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * Flake shapes in one bitmap, so the GPU can batch a whole field. [extent] maps
- * a radius to the half-size of the drawn square: soft falloff reaches past the
- * size the eye reads.
+ * Flake shapes in one bitmap, so a whole field is one draw. Each shape comes in
+ * sizes halving down to [SnowSprites.MIN_CELL_PX], our own mip levels: a batched draw samples
+ * through a shader, which may not use the bitmap's mipmaps. [extent] maps a radius
+ * to the half-size of the drawn square: soft falloff reaches past the size the eye reads.
  */
 internal class SpriteAtlas(
     val bitmap: Bitmap,
-    private val cells: Array<Rect>,
+    /** Per level, largest first: the cell of each shape variant. */
+    private val levels: List<Array<Rect>>,
     val extent: Float,
 ) {
-    fun cell(shape: Float): Rect = cells[min((shape * cells.size).toInt(), cells.size - 1)]
+    /** The cell for [shape] that is drawn at [sizePx] with at most a 2x downscale. */
+    fun cell(shape: Float, sizePx: Float): Rect {
+        var level = 0
+        while (level + 1 < levels.size && levels[level + 1][0].width() >= sizePx) level++
+        val cells = levels[level]
+        return cells[min((shape * cells.size).toInt(), cells.size - 1)]
+    }
 }
 
 internal object SnowSprites {
@@ -58,32 +66,53 @@ internal object SnowSprites {
         edgeRadius: Float,
         extent: Float,
     ): SpriteAtlas {
-        val width = cellPx * variants
-        val pixels = IntArray(width * cellPx)
         val center = cellPx / 2f
-        val cells = Array(variants) { v ->
+        // Alpha of each variant at full size, then box-filtered down level by level like mipmaps.
+        var alphas = List(variants) {
             val phases = FloatArray(wobble.size) { random.nextFloat() * TWO_PI }
-            val left = v * cellPx
-            for (py in 0 until cellPx) {
-                for (px in 0 until cellPx) {
-                    val dx = px + 0.5f - center
-                    val dy = py + 0.5f - center
-                    val angle = atan2(dy, dx)
-                    var edge = 1f
-                    for (k in wobble.indices) {
-                        if (wobble[k] != 0f) edge += wobble[k] * sin(k * angle + phases[k])
-                    }
-                    val d = sqrt(dx * dx + dy * dy) / (edgeRadius * cellPx * edge)
-                    val alpha = (profile(d).coerceIn(0f, 1f) * 255).toInt()
-                    pixels[py * width + left + px] = (alpha shl 24) or 0xFFFFFF
+            FloatArray(cellPx * cellPx) { index ->
+                val dx = index % cellPx + 0.5f - center
+                val dy = index / cellPx + 0.5f - center
+                val angle = atan2(dy, dx)
+                var edge = 1f
+                for (k in wobble.indices) {
+                    if (wobble[k] != 0f) edge += wobble[k] * sin(k * angle + phases[k])
                 }
+                profile(sqrt(dx * dx + dy * dy) / (edgeRadius * cellPx * edge)).coerceIn(0f, 1f)
             }
-            Rect(left, 0, left + cellPx, cellPx)
         }
-        val bitmap = Bitmap.createBitmap(pixels, width, cellPx, Bitmap.Config.ARGB_8888)
-        // Flakes are drawn far smaller than the cell; mipmaps keep the downscale smooth.
-        bitmap.setHasMipMap(true)
-        return SpriteAtlas(bitmap, cells, extent)
+        val levelSizes = generateSequence(cellPx) { it / 2 }.takeWhile { it >= MIN_CELL_PX }.toList()
+
+        val width = cellPx * variants
+        val height = levelSizes.sum()
+        val pixels = IntArray(width * height)
+        var top = 0
+        val levels = levelSizes.mapIndexed { level, size ->
+            if (level > 0) alphas = alphas.map { halve(it, size * 2) }
+            val cells = Array(variants) { v ->
+                val left = v * size
+                for (y in 0 until size) {
+                    for (x in 0 until size) {
+                        val alpha = (alphas[v][y * size + x] * 255).toInt()
+                        pixels[(top + y) * width + left + x] = (alpha shl 24) or 0xFFFFFF
+                    }
+                }
+                Rect(left, top, left + size, top + size)
+            }
+            top += size
+            cells
+        }
+        return SpriteAtlas(Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888), levels, extent)
+    }
+
+    /** Averages each 2x2 block of a [size] x [size] alpha cell. */
+    private fun halve(alpha: FloatArray, size: Int): FloatArray {
+        val half = size / 2
+        return FloatArray(half * half) { index ->
+            val x = index % half * 2
+            val y = index / half * 2
+            (alpha[y * size + x] + alpha[y * size + x + 1] + alpha[(y + 1) * size + x] + alpha[(y + 1) * size + x + 1]) / 4f
+        }
     }
 
     private fun smoothstep(from: Float, to: Float, x: Float): Float {
@@ -95,5 +124,8 @@ internal object SnowSprites {
     private const val FLAKE_CELL_PX = 64
     private const val BOKEH_VARIANTS = 1
     private const val BOKEH_CELL_PX = 128
+
+    /** Smallest mip level; flakes drawn smaller than this are downscaled from it. */
+    private const val MIN_CELL_PX = 8
     private const val TWO_PI = (2 * PI).toFloat()
 }
