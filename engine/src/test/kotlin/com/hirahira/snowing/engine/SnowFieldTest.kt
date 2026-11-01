@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.abs
 import kotlin.random.Random
 
 class SnowFieldTest {
@@ -67,12 +68,19 @@ class SnowFieldTest {
         repeat(60) { at60.step(1f / 60) }
         repeat(120) { at120.step(1f / 120) }
 
-        // Moving air is integrated per frame, so a pixel or so of drift is expected.
+        // Moving air is integrated per frame and sampled ~20 times a second, so a flake caught at the
+        // edge of a gust may drift a few pixels (about 1 dp); on average the paths stay well within one.
+        var drift = 0f
+        var compared = 0
         for (i in 0 until at60.count) {
             if (at60.y(i) < start[i] || at120.y(i) < start[i]) continue
-            assertEquals("y of $i", at60.y(i), at120.y(i), 1.5f)
-            assertEquals("x of $i", at60.x(i), at120.x(i), 1.5f)
+            if (abs(at60.x(i) - at120.x(i)) > at60.width / 2) continue // wrapped round a side edge
+            assertEquals("y of $i", at60.y(i), at120.y(i), 6f)
+            assertEquals("x of $i", at60.x(i), at120.x(i), 6f)
+            drift += abs(at60.x(i) - at120.x(i)) + abs(at60.y(i) - at120.y(i))
+            compared++
         }
+        assertTrue("mean drift ${drift / compared} px", drift / compared < 1f)
     }
 
     @Test
@@ -119,6 +127,36 @@ class SnowFieldTest {
         }
         assertTrue("too few pairs: $nearPairs near, $farPairs far", nearPairs > 3 && farPairs > 30)
         assertTrue("near ${near / nearPairs} vs far ${far / farPairs}", near / nearPairs < 0.5f * far / farPairs)
+    }
+
+    @Test
+    fun `flakes in one layer fall at different speeds`() {
+        val snow = field(config = stillAir.copy(layers = 1))
+        val speeds = (0 until snow.count).map { snow.fallSpeed(it) / 3f } // dp/s
+        assertTrue("slowest ${speeds.min()}", speeds.min() < 0.85f * stillAir.fallSpeed)
+        assertTrue("fastest ${speeds.max()}", speeds.max() > 1.15f * stillAir.fallSpeed)
+        assertTrue(speeds.all { it in 0.75f * stillAir.fallSpeed..1.25f * stillAir.fallSpeed })
+    }
+
+    @Test
+    fun `gusts blow with the wind and never swing back`() {
+        val snow = field(config = config.copy(wind = 5f, gusts = 40f, turbulence = 0f, flutter = 0f))
+        var x = FloatArray(snow.count) { snow.x(it) }
+        var y = FloatArray(snow.count) { snow.y(it) }
+        var fastest = 0f
+        repeat(600) { // a minute, several gusts
+            snow.run(0.1f)
+            for (i in 0 until snow.count) {
+                if (snow.y(i) < y[i]) continue // reborn at the top
+                val dx = snow.x(i) - x[i]
+                if (kotlin.math.abs(dx) > snow.width / 2) continue // wrapped round the side
+                assertTrue("flake $i moved left by $dx", dx >= 0f)
+                fastest = maxOf(fastest, dx / 0.1f / 3f)
+            }
+            x = FloatArray(snow.count) { snow.x(it) }
+            y = FloatArray(snow.count) { snow.y(it) }
+        }
+        assertTrue("no gust came: fastest $fastest dp/s", fastest > 25f)
     }
 
     @Test
@@ -308,7 +346,8 @@ class SnowFieldTest {
 
     @Test
     fun `resize keeps flakes at the same relative position`() {
-        val snow = steadyField()
+        // Without flutter: the wobble around the path is in dp and does not scale with the screen.
+        val snow = steadyField(config = stillAir)
         val relativeY = FloatArray(snow.count) { snow.y(it) / snow.height }
         snow.resize(2400, 1080)
 

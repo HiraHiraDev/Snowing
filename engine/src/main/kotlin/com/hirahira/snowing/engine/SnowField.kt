@@ -1,9 +1,11 @@
 package com.hirahira.snowing.engine
 
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sign
 import kotlin.random.Random
 
 /**
@@ -12,7 +14,9 @@ import kotlin.random.Random
  *
  * A flake takes all its parameters when born above the top edge and keeps them
  * until it falls out (ADR-0006); [config] only describes flakes yet to be born.
- * Flakes drift in shared air: swirls, gusts and a mean wind (ADR-0009).
+ * Flakes drift in shared air: swirls, gusts and a mean wind (ADR-0009). Each
+ * flake falls at its own speed and answers the air with its own lightness, so
+ * neighbours caught in the same air still part ways (ADR-0009 §Zmiana 2026-10-24).
  */
 class SnowField(
     config: SnowConfig,
@@ -48,6 +52,10 @@ class SnowField(
     // The air. Clocks wrap at the noise period, which is seamless.
     private var eddyClock = 0f
     private var gustClock = 0f
+    private var sideClock = 0f
+
+    // Which way gusts blow when the mood has no wind of its own; turns only while the air is quiet.
+    private var weatherSide = 1f
 
     // Each flake samples the air only every `airStride` frames (~20 Hz), staggered by index.
     private var frame = 0
@@ -61,6 +69,8 @@ class SnowField(
     private var sizeSeed = FloatArray(0)
     private var shapeSeed = FloatArray(0)
     private var flutterRow = FloatArray(0)
+    private var fallSeed = FloatArray(0)
+    private var lightSeed = FloatArray(0)
 
     // Parameters, fixed at birth.
     private var fallPx = FloatArray(0)
@@ -68,6 +78,8 @@ class SnowField(
     private var gustPx = FloatArray(0)
     private var eddyPx = FloatArray(0)
     private var flutterPx = FloatArray(0)
+    private var gustSide = FloatArray(0)
+    private var lightness = FloatArray(0)
     private var flutterRate = FloatArray(0)
     private var inertia = FloatArray(0)
     private var layerZ = FloatArray(0)
@@ -79,8 +91,10 @@ class SnowField(
     private var velX = FloatArray(0)
     private var airX = FloatArray(0)
     private var airY = FloatArray(0)
+    private var liftY = FloatArray(0)
     private var flutterPhase = FloatArray(0)
     private var renderX = FloatArray(0)
+    private var renderY = FloatArray(0)
 
     /**
      * Sets the drawing area. On the first call snow starts falling from the top
@@ -101,7 +115,7 @@ class SnowField(
         width = newWidth
         height = newHeight
         spawnMissing()
-        updateRenderX()
+        updateRender()
     }
 
     /**
@@ -117,7 +131,7 @@ class SnowField(
         }
         retireWaiting(targetCount())
         spawnMissing()
-        updateRenderX()
+        updateRender()
     }
 
     /** Stops new flakes from being born; the ones on screen fall out. */
@@ -146,6 +160,8 @@ class SnowField(
         easeFade(dt)
         eddyClock = (eddyClock + dt * EDDY_RATE) % Noise.PERIOD
         gustClock = (gustClock + dt * GUST_RATE) % Noise.PERIOD
+        sideClock = (sideClock + dt * SIDE_RATE) % Noise.PERIOD
+        turnWeatherSide()
         frame++
         airStride = if (dt > 0f) (AIR_SAMPLE_SECONDS / dt).toInt().coerceIn(1, MAX_AIR_STRIDE) else 1
         spawnMissing()
@@ -165,12 +181,12 @@ class SnowField(
             }
             i++
         }
-        updateRenderX()
+        updateRender()
     }
 
     fun x(i: Int): Float = renderX[i]
 
-    fun y(i: Int): Float = posY[i]
+    fun y(i: Int): Float = renderY[i]
 
     fun radius(i: Int): Float = radiusPx[i]
 
@@ -190,7 +206,7 @@ class SnowField(
         posX[i] += velX[i] * dt
 
         val fall = fallPx[i]
-        posY[i] += max(fall + airY[i], fall * MIN_FALL) * dt
+        posY[i] += (max(fall + airY[i], fall * MIN_FALL) - liftY[i]) * dt
         flutterPhase[i] = (flutterPhase[i] + flutterRate[i] * dt) % Noise.PERIOD
     }
 
@@ -206,11 +222,27 @@ class SnowField(
         val dPsiDy = (Noise.at(sx, sy + CURL_STEP, sz) - Noise.at(sx, sy - CURL_STEP, sz)) / (2 * CURL_STEP)
         val dPsiDx = (Noise.at(sx + CURL_STEP, sy, sz) - Noise.at(sx - CURL_STEP, sy, sz)) / (2 * CURL_STEP)
 
-        // Gusts: one wide wave of wind travelling sideways, so they reach one edge first.
-        val gust = Noise.at(gustClock - xDp / GUST_WIDTH_DP, GUST_ROW, 0f)
+        // Gusts: bursts that blow one way and die down, never a swing back. Each one travels
+        // with the wind, so it reaches the upwind edge first, and lifts flakes as it passes.
+        val side = if (gustSide[i] != 0f) gustSide[i] else weatherSide
+        val gust = gustAt(gustClock - side * xDp / GUST_WIDTH_DP) * gustPx[i] * lightness[i]
 
-        airX[i] = windPx[i] + gust * gustPx[i] + dPsiDy * eddyPx[i]
-        airY[i] = -dPsiDx * eddyPx[i] * VERTICAL_EDDY
+        val light = lightness[i]
+        airX[i] = windPx[i] + side * gust + dPsiDy * eddyPx[i] * light
+        airY[i] = -dPsiDx * eddyPx[i] * light * VERTICAL_EDDY
+        liftY[i] = gust * GUST_LIFT
+    }
+
+    /** 0 between gusts, rising smoothly to 1 at the height of one. */
+    private fun gustAt(at: Float): Float {
+        val t = ((Noise.at(at, GUST_ROW, 0f) - GUST_ON) / (GUST_FULL - GUST_ON)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+
+    /** Calm moods get gusts from either side, but a gust never turns round halfway. */
+    private fun turnWeatherSide() {
+        if (gustAt(gustClock - width / pxPerDp / 2f / GUST_WIDTH_DP) > 0f) return
+        weatherSide = if (Noise.at(sideClock, SIDE_ROW, 0f) >= 0f) 1f else -1f
     }
 
     private fun wrapSideways(i: Int) {
@@ -238,7 +270,8 @@ class SnowField(
         val band = height * (1f + respawnBand())
         for (i in count until target) {
             rollSeeds(i)
-            posY[i] = -radiusPx[i] - random.nextFloat() * band
+            posY[i] = -hiddenAbove(i) - random.nextFloat() * band
+            render(i)
         }
         count = target
     }
@@ -247,7 +280,7 @@ class SnowField(
     private fun retireWaiting(target: Int) {
         var i = 0
         while (i < count && count > target) {
-            if (posY[i] + radiusPx[i] < 0f) {
+            if (renderY[i] + radiusPx[i] < 0f) {
                 removeAt(i)
                 continue
             }
@@ -257,8 +290,12 @@ class SnowField(
 
     private fun respawn(i: Int) {
         rollSeeds(i)
-        posY[i] = -radiusPx[i] - random.nextFloat() * height * respawnBand()
+        posY[i] = -hiddenAbove(i) - random.nextFloat() * height * respawnBand()
+        render(i)
     }
+
+    /** How far above the top edge a flake is still out of sight, flutter included. */
+    private fun hiddenAbove(i: Int): Float = radiusPx[i] + flutterPx[i] * FLUTTER_Y
 
     private fun respawnBand(): Float = SPAWN_BAND + config.respawnSpread
 
@@ -268,6 +305,8 @@ class SnowField(
         shapeSeed[i] = random.nextFloat()
         flutterRow[i] = random.nextFloat() * Noise.PERIOD
         flutterPhase[i] = random.nextFloat() * Noise.PERIOD
+        fallSeed[i] = random.nextFloat()
+        lightSeed[i] = random.nextFloat()
         posX[i] = random.nextFloat() * width
         assignParameters(i)
         sampleAir(i)
@@ -278,10 +317,14 @@ class SnowField(
         val depth = depth(depthSeed[i], config.layers)
         // Parallax: the same air moves a distant flake fewer pixels.
         val motion = lerp(FAR_MOTION, 1f, depth) * pxPerDp
-        fallPx[i] = bornFallSpeed * motion
+        // Speeds spread within a layer too, so no two neighbours fall in step.
+        fallPx[i] = bornFallSpeed * motion * lerp(1f - FALL_SPREAD, 1f + FALL_SPREAD, fallSeed[i])
         windPx[i] = bornWind * motion
         gustPx[i] = bornGusts * motion
         eddyPx[i] = bornTurbulence * motion
+        lightness[i] = lerp(LIGHTNESS_MIN, LIGHTNESS_MAX, lightSeed[i])
+        // Gusts follow the mood's wind; without one they come from the weather.
+        gustSide[i] = if (abs(bornWind) < STILL_WIND_DP) 0f else sign(bornWind)
         flutterPx[i] = bornFlutter * pxPerDp * lerp(FAR_FLUTTER, 1f, depth)
         flutterRate[i] = lerp(FLUTTER_RATE_MIN, FLUTTER_RATE_MAX, sizeSeed[i])
         // Bigger flakes are heavier and turn more lazily.
@@ -301,11 +344,15 @@ class SnowField(
             sizeSeed[i] = sizeSeed[last]
             shapeSeed[i] = shapeSeed[last]
             flutterRow[i] = flutterRow[last]
+            fallSeed[i] = fallSeed[last]
+            lightSeed[i] = lightSeed[last]
             fallPx[i] = fallPx[last]
             windPx[i] = windPx[last]
             gustPx[i] = gustPx[last]
             eddyPx[i] = eddyPx[last]
             flutterPx[i] = flutterPx[last]
+            gustSide[i] = gustSide[last]
+            lightness[i] = lightness[last]
             flutterRate[i] = flutterRate[last]
             inertia[i] = inertia[last]
             layerZ[i] = layerZ[last]
@@ -316,8 +363,10 @@ class SnowField(
             velX[i] = velX[last]
             airX[i] = airX[last]
             airY[i] = airY[last]
+            liftY[i] = liftY[last]
             flutterPhase[i] = flutterPhase[last]
             renderX[i] = renderX[last]
+            renderY[i] = renderY[last]
         }
         count = last
     }
@@ -353,10 +402,14 @@ class SnowField(
         if (fade == 0f) count = 0
     }
 
-    private fun updateRenderX() {
-        for (i in 0 until count) {
-            renderX[i] = posX[i] + Noise.at(flutterPhase[i], flutterRow[i], FLUTTER_SLICE) * flutterPx[i]
-        }
+    // Flutter in both axes, less up and down: a flake tumbles in small irregular loops instead of swinging.
+    private fun updateRender() {
+        for (i in 0 until count) render(i)
+    }
+
+    private fun render(i: Int) {
+        renderX[i] = posX[i] + Noise.at(flutterPhase[i], flutterRow[i], FLUTTER_SLICE) * flutterPx[i]
+        renderY[i] = posY[i] + Noise.at(flutterPhase[i], flutterRow[i], FLUTTER_SLICE_Y) * flutterPx[i] * FLUTTER_Y
     }
 
     private fun ensureCapacity(size: Int) {
@@ -365,11 +418,15 @@ class SnowField(
         sizeSeed = sizeSeed.copyOf(size)
         shapeSeed = shapeSeed.copyOf(size)
         flutterRow = flutterRow.copyOf(size)
+        fallSeed = fallSeed.copyOf(size)
+        lightSeed = lightSeed.copyOf(size)
         fallPx = fallPx.copyOf(size)
         windPx = windPx.copyOf(size)
         gustPx = gustPx.copyOf(size)
         eddyPx = eddyPx.copyOf(size)
         flutterPx = flutterPx.copyOf(size)
+        gustSide = gustSide.copyOf(size)
+        lightness = lightness.copyOf(size)
         flutterRate = flutterRate.copyOf(size)
         inertia = inertia.copyOf(size)
         layerZ = layerZ.copyOf(size)
@@ -380,8 +437,10 @@ class SnowField(
         velX = velX.copyOf(size)
         airX = airX.copyOf(size)
         airY = airY.copyOf(size)
+        liftY = liftY.copyOf(size)
         flutterPhase = flutterPhase.copyOf(size)
         renderX = renderX.copyOf(size)
+        renderY = renderY.copyOf(size)
     }
 
     companion object {
@@ -404,12 +463,17 @@ class SnowField(
         private const val AREA_UNIT_DP2 = 10_000f
 
         // Farthest layer relative to the closest one.
-        private const val FAR_MOTION = 0.45f
+        private const val FAR_MOTION = 0.4f
         private const val FAR_ALPHA = 0.35f
         private const val FAR_FLUTTER = 0.5f
 
         // Per-flake variation so a layer doesn't look cloned.
         private const val SIZE_JITTER = 0.2f
+        private const val FALL_SPREAD = 0.25f
+
+        // How strongly a flake answers swirls and gusts: light ones get blown about more.
+        private const val LIGHTNESS_MIN = 0.6f
+        private const val LIGHTNESS_MAX = 1.4f
 
         // The air (ADR-0009). Swirls about a third of a phone screen wide, changing over ~15 s.
         private const val EDDY_SIZE_DP = 180f
@@ -418,15 +482,28 @@ class SnowField(
         private const val VERTICAL_EDDY = 0.5f
         private const val LAYER_Z_STEP = 37.3f
 
-        // Gusts rise and fall over ~10 s and cross a phone screen in ~1.5 s.
-        private const val GUST_RATE = 0.1f
+        // Gusts: a burst every ~13 s lasting ~4 s, crossing a phone screen in under a second.
+        // The noise sits in about -0.45..0.45; above GUST_ON a gust starts, at GUST_FULL it peaks.
+        private const val GUST_RATE = 0.2f
         private const val GUST_WIDTH_DP = 2500f
         private const val GUST_ROW = 91.7f
+        private const val GUST_ON = 0.1f
+        private const val GUST_FULL = 0.45f
+
+        // A gust also lifts flakes by this share of its sideways speed: they hover or rise briefly.
+        private const val GUST_LIFT = 0.5f
+
+        // Without a mood wind (below this, dp/s) the gust side comes from the weather and turns every ~half minute.
+        private const val STILL_WIND_DP = 1f
+        private const val SIDE_RATE = 0.02f
+        private const val SIDE_ROW = 57.3f
 
         // Flutter: an irregular wobble, not a pendulum.
         private const val FLUTTER_RATE_MIN = 0.25f
         private const val FLUTTER_RATE_MAX = 0.6f
         private const val FLUTTER_SLICE = 13.1f
+        private const val FLUTTER_SLICE_Y = 29.7f
+        private const val FLUTTER_Y = 0.5f
 
         // How often a flake looks at the air, and the most frames it may skip.
         private const val AIR_SAMPLE_SECONDS = 0.05f
